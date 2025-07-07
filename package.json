@@ -1,0 +1,35 @@
+{
+  "name": "msmgis",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "dxf-parser": "^1.1.2",
+    "file-saver": "^2.0.5",
+    "ol": "^10.6.1",
+    "ol-ext": "^4.0.33",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-icons": "^5.5.0",
+    "shapefile": "^0.6.6",
+    "shapefile.js": "^1.1.4",
+    "shpjs": "^6.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.29.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react-swc": "^3.10.2",
+    "eslint": "^9.29.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.2.0",
+    "vite": "^7.0.0"
+  }
+}
