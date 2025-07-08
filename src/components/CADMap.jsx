@@ -5,38 +5,45 @@ import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import OSM from "ol/source/OSM";
 import VectorSource from "ol/source/Vector";
-import { Draw, Snap, Select } from "ol/interaction";
-import { Style, Stroke } from "ol/style";
+import { Style, Stroke, Fill } from "ol/style";
 import { fromLonLat } from "ol/proj";
 import GeoJSON from "ol/format/GeoJSON";
 import KML from "ol/format/KML";
-import shp from "shpjs";
-import DxfParser from "dxf-parser";
-import HeaderBar from "./HeaderBar.jsx";
 import { saveAs } from "file-saver";
+import LineString from "ol/geom/LineString";
+import Polygon from "ol/geom/Polygon";
+import Point from "ol/geom/Point";
+import Feature from "ol/Feature";
+import HeaderBar from "./HeaderBar";
 
 export default function CADMap() {
   const mapRef = useRef();
-  const mapInstance = useRef();
+  const map = useRef();
   const vectorSource = useRef(new VectorSource());
-  const drawRef = useRef();
-  const snapRef = useRef();
+  const tempSource = useRef(new VectorSource());
 
-  const [snapOn, setSnapOn] = useState(false);
-  const [layers, setLayers] = useState([]);
   const [theme, setTheme] = useState("dark");
+  const [drawLength, setDrawLength] = useState("");
+  const [drawAngle, setDrawAngle] = useState("0");
+  const [hvMode, setHvMode] = useState("H");
+  const [polyCoords, setPolyCoords] = useState([]);
+  const [polyMode, setPolyMode] = useState(null);
   const [importedFilename, setImportedFilename] = useState(null);
 
   const history = useRef({ undo: [], redo: [] });
+
   const snapshot = () =>
     JSON.stringify(
       new GeoJSON().writeFeatures(vectorSource.current.getFeatures())
     );
-  const apply = (j) => {
+
+  const applySnapshot = (json) => {
     vectorSource.current.clear();
-    vectorSource.current.addFeatures(
-      new GeoJSON().readFeatures(j, { featureProjection: "EPSG:3857" })
-    );
+    const feats = new GeoJSON().readFeatures(json, {
+      dataProjection: "EPSG:4326",
+      featureProjection: "EPSG:3857",
+    });
+    vectorSource.current.addFeatures(feats);
   };
 
   useEffect(() => {
@@ -44,184 +51,186 @@ export default function CADMap() {
     setTheme(saved);
     document.body.classList.toggle("light", saved === "light");
 
-    const osm = new TileLayer({ source: new OSM(), title: "OSM Base" });
-    const vectorLayer = new VectorLayer({
+    const base = new TileLayer({ source: new OSM() });
+    const drawLayer = new VectorLayer({
       source: vectorSource.current,
-      title: "Draw Layer",
       style: new Style({ stroke: new Stroke({ color: "#00ffff", width: 2 }) }),
     });
-    const map = new Map({
+    const previewLayer = new VectorLayer({
+      source: tempSource.current,
+      style: new Style({
+        stroke: new Stroke({ color: "yellow", width: 2, lineDash: [8, 4] }),
+        fill: new Fill({ color: "rgba(255,255,0,0.2)" }),
+      }),
+    });
+
+    map.current = new Map({
       target: mapRef.current,
-      layers: [osm, vectorLayer],
+      layers: [base, drawLayer, previewLayer],
       view: new View({ center: fromLonLat([100.5, 13.75]), zoom: 14 }),
     });
-    mapInstance.current = map;
-
-    setLayers([
-      {
-        uid: "osm",
-        title: "OSM Base",
-        visible: osm.getVisible(),
-        toggle: () => {
-          osm.setVisible(!osm.getVisible());
-          setLayers((ls) =>
-            ls.map((l) =>
-              l.uid === "osm" ? { ...l, visible: osm.getVisible() } : l
-            )
-          );
-        },
-      },
-      {
-        uid: "draw",
-        title: "Draw Layer",
-        visible: vectorLayer.getVisible(),
-        toggle: () => {
-          vectorLayer.setVisible(!vectorLayer.getVisible());
-          setLayers((ls) =>
-            ls.map((l) =>
-              l.uid === "draw" ? { ...l, visible: vectorLayer.getVisible() } : l
-            )
-          );
-        },
-      },
-    ]);
-
-    const select = new Select();
-    map.addInteraction(select);
-    select.on("select", (e) => {}); // inspector can be added
-
-    return () => map.setTarget(null);
   }, []);
 
-  const handleTool = (t) => {
-    const map = mapInstance.current;
-    if (drawRef.current) map.removeInteraction(drawRef.current);
-    if (t === "LineString") {
-      history.current.undo.push(snapshot());
-      history.current.redo = [];
-      const d = new Draw({ source: vectorSource.current, type: "LineString" });
-      map.addInteraction(d);
-      drawRef.current = d;
-    }
-    if (t === "undo") {
-      const prev = history.current.undo.pop();
-      if (prev) {
-        history.current.redo.push(snapshot());
-        apply(prev);
-      }
-    }
-    if (t === "redo") {
-      const next = history.current.redo.pop();
-      if (next) {
-        history.current.undo.push(snapshot());
-        apply(next);
-      }
-    }
-  };
-
-  const handleImport = async (f) => {
-    setImportedFilename(f.name);
-    history.current.undo.push(snapshot());
-    history.current.redo = [];
-    const name = f.name.toLowerCase();
-    if (name.endsWith(".geojson"))
-      vectorSource.current.addFeatures(
-        new GeoJSON().readFeatures(await f.text(), {
-          featureProjection: "EPSG:3857",
-        })
-      );
-    else if (name.endsWith(".kml"))
-      vectorSource.current.addFeatures(
-        new KML().readFeatures(await f.text(), {
-          featureProjection: "EPSG:3857",
-        })
-      );
-    else if (name.endsWith(".zip"))
-      vectorSource.current.addFeatures(
-        new GeoJSON().readFeatures(
-          JSON.stringify(await shp(await f.arrayBuffer())),
-          { featureProjection: "EPSG:3857" }
-        )
-      );
-    else if (name.endsWith(".dxf")) {
-      const d = new DxfParser().parseSync(await f.text());
-      d.entities.forEach((ent) => {
-        if (ent.type === "LINE") {
-          const feat = new GeoJSON().readFeature(
-            {
-              type: "Feature",
-              geometry: {
-                type: "LineString",
-                coordinates: [
-                  [ent.start.x, ent.start.y],
-                  [ent.end.x, ent.end.y],
-                ],
-              },
-              properties: {},
-            },
-            { featureProjection: "EPSG:3857", dataProjection: "EPSG:4326" }
-          );
-          vectorSource.current.addFeature(feat);
-        }
-      });
-    }
-  };
-
-  const handleExport = (fmt) => {
-    const feats = vectorSource.current.getFeatures();
-    let out = "",
-      fname = "";
-    if (fmt === "geojson") {
-      out = new GeoJSON().writeFeatures(feats);
-      fname = "export.geojson";
-    }
-    if (fmt === "kml") {
-      out = new KML().writeFeatures(feats);
-      fname = "export.kml";
-    }
-    if (fmt === "csv") {
-      out =
-        "lon,lat\n" +
-        feats.map((f) => f.getGeometry().getCoordinates().join(",")).join("\n");
-      fname = "export.csv";
-    }
-    saveAs(new Blob([out], { type: "text/plain" }), fname);
-  };
-  const handleClear = () => {
-    history.current.undo.push(snapshot());
-    vectorSource.current.clear();
-  };
-  const handleToggleSnap = () => {
-    const m = mapInstance.current;
-    if (!snapOn) {
-      snapRef.current = new Snap({ source: vectorSource.current });
-      m.addInteraction(snapRef.current);
-    } else m.removeInteraction(snapRef.current);
-    setSnapOn(!snapOn);
-  };
-  const handleZoom = () =>
-    mapInstance.current
-      .getView()
-      .fit(vectorSource.current.getExtent(), { padding: [50, 50, 50, 50] });
-  const toggle = () => {
+  const toggleTheme = () => {
     const n = theme === "dark" ? "light" : "dark";
     setTheme(n);
     localStorage.setItem("theme", n);
     document.body.classList.toggle("light", n === "light");
   };
 
+  const handleImport = async (file) => {
+    setImportedFilename(file.name);
+    history.current.undo.push(snapshot());
+    const text = await file.text();
+    let feats = [];
+
+    if (file.name.toLowerCase().endsWith(".geojson")) {
+      feats = new GeoJSON().readFeatures(text, {
+        dataProjection: "EPSG:4326",
+        featureProjection: "EPSG:3857",
+      });
+    } else if (file.name.toLowerCase().endsWith(".kml")) {
+      feats = new KML().readFeatures(text, {
+        dataProjection: "EPSG:4326",
+        featureProjection: "EPSG:3857",
+      });
+    } else if (file.name.toLowerCase().endsWith(".csv")) {
+      const rows = text.trim().split("\n");
+      rows.forEach((line) => {
+        const [x, y] = line.split(",").map(parseFloat);
+        if (!isNaN(x) && !isNaN(y)) {
+          feats.push(new Feature({ geometry: new Point(fromLonLat([x, y])) }));
+        }
+      });
+    }
+
+    vectorSource.current.addFeatures(feats);
+  };
+
+  const handleExport = (fmt) => {
+    const feats = vectorSource.current.getFeatures();
+    let output = "",
+      filename = "";
+    if (fmt === "geojson") {
+      output = new GeoJSON().writeFeatures(feats);
+      filename = "export.geojson";
+    } else if (fmt === "kml") {
+      output = new KML().writeFeatures(feats);
+      filename = "export.kml";
+    } else if (fmt === "csv") {
+      const lines = feats.map((f) => {
+        const c = f.getGeometry().getFirstCoordinate();
+        return `${c[0]},${c[1]}`;
+      });
+      output = "lon,lat\n" + lines.join("\n");
+      filename = "export.csv";
+    }
+    saveAs(new Blob([output], { type: "text/plain" }), filename);
+  };
+
+  const handleClear = () => {
+    history.current.undo.push(snapshot());
+    vectorSource.current.clear();
+  };
+
+  const handleUndo = () => {
+    const prev = history.current.undo.pop();
+    if (prev) {
+      history.current.redo.push(snapshot());
+      applySnapshot(prev);
+    }
+  };
+
+  const handleRedo = () => {
+    const next = history.current.redo.pop();
+    if (next) {
+      history.current.undo.push(snapshot());
+      applySnapshot(next);
+    }
+  };
+
+  const startLine = () => {
+    setPolyMode("line");
+    setPolyCoords([]);
+    tempSource.current.clear();
+  };
+
+  const startPolygon = () => {
+    setPolyMode("polygon");
+    setPolyCoords([]);
+    tempSource.current.clear();
+  };
+
+  const nextSegment = () => {
+    if (!polyMode) return;
+    const len = parseFloat(drawLength);
+    if (isNaN(len)) return alert("กรุณากรอกระยะ");
+
+    const base =
+      polyCoords[polyCoords.length - 1] || map.current.getView().getCenter();
+    let angle =
+      hvMode === "V"
+        ? Math.PI / 2
+        : hvMode === "A"
+        ? (parseFloat(drawAngle) * Math.PI) / 180
+        : 0;
+
+    const nxt = [
+      base[0] + Math.cos(angle) * len,
+      base[1] + Math.sin(angle) * len,
+    ];
+    const updated = [...polyCoords, nxt];
+    setPolyCoords(updated);
+
+    const geom =
+      polyMode === "line" ? new LineString(updated) : new Polygon([updated]);
+    tempSource.current.clear();
+    tempSource.current.addFeature(new Feature({ geometry: geom }));
+  };
+
+  const finishDraw = () => {
+    if (!polyMode || polyCoords.length < 2) return;
+    const geom =
+      polyMode === "line"
+        ? new LineString(polyCoords)
+        : new Polygon([polyCoords]);
+    vectorSource.current.addFeature(new Feature({ geometry: geom }));
+    history.current.undo.push(snapshot());
+    setPolyCoords([]);
+    setPolyMode(null);
+    tempSource.current.clear();
+  };
+
+  const toggleHvMode = () => {
+    setHvMode((prev) => (prev === "H" ? "V" : prev === "V" ? "A" : "H"));
+  };
+
   return (
     <div id="container">
       <HeaderBar
-        onTool={handleTool}
+        onTool={(tool) => {
+          if (tool === "undo") handleUndo();
+          if (tool === "redo") handleRedo();
+        }}
         onImport={handleImport}
         onExport={handleExport}
         onClear={handleClear}
-        onToggleSnap={handleToggleSnap}
-        onZoomLayer={handleZoom}
-        toggleTheme={toggle}
+        onToggleSnap={() => {}}
+        onZoomLayer={() => {}}
+        toggleTheme={toggleTheme}
         theme={theme}
-        snapOn={snapOn}
+        snapOn={false}
+        drawLength={drawLength}
+        setDrawLength={setDrawLength}
+        drawAngle={drawAngle}
+        setDrawAngle={setDrawAngle}
+        hvMode={hvMode}
+        onModeHV={toggleHvMode}
+        onStartPolyline={startLine}
+        onNextSegment={nextSegment}
+        onFinishPolyline={finishDraw}
+        onStartPolygon={startPolygon}
+        onFinishPolygon={finishDraw}
         importedFilename={importedFilename}
       />
       <div id="map" ref={mapRef}></div>
