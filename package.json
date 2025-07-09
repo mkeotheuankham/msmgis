@@ -12,6 +12,7 @@
   "dependencies": {
     "dxf-parser": "^1.1.2",
     "file-saver": "^2.0.5",
+    "lucide-react": "^0.525.0",
     "ol": "^10.6.1",
     "ol-ext": "^4.0.33",
     "react": "^19.1.0",
