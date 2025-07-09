@@ -1,10 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import CADMap from "./components/CADMap.jsx";
-import "./styles/map.css";
+import App from "./App";
+import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <CADMap />
+    <App />
   </React.StrictMode>
 );
