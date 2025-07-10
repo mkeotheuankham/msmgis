@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react"; // Added useState, useCallback
 import "ol/ol.css"; // Import OpenLayers default CSS for basic styling | ນໍາເຂົ້າໄຟລ໌ CSS ມາດຕະຖານຂອງ OpenLayers ເພື່ອການອອກແບບພື້ນຖານ
 import Map from "ol/Map"; // OpenLayers Map object | ອອບເຈັກແຜນທີ່ OpenLayers
 import View from "ol/View"; // OpenLayers View for map projection, center, and zoom | View ຂອງ OpenLayers ສໍາລັບການຄາດຄະເນແຜນທີ່, ຈຸດກາງ, ແລະການຊູມ
@@ -19,6 +19,7 @@ import Select from "ol/interaction/Select"; // Interaction for selecting feature
 import Polygon from "ol/geom/Polygon"; // Geometry type for polygons | ປະເພດເລຂາຄະນິດສໍາລັບຮູບຫຼາຍຫຼ່ຽມ
 import Feature from "ol/Feature"; // OpenLayers Feature object, which holds geometry and properties | ອອບເຈັກຄຸນສົມບັດ OpenLayers, ເຊິ່ງບັນຈຸເລຂາຄະນິດ ແລະຄຸນສົມບັດ
 import CoordinateBar from "./ui/CoordinateBar"; // Custom component for displaying coordinates and scale | ອົງປະກອບສໍາລັບສະແດງພິກັດ ແລະ ຂະໜາດ
+import Sidebar from "./ui/Sidebar"; // Custom sidebar component for map controls | ອົງປະກອບ sidebar ສໍາລັບການຄວບຄຸມແຜນທີ່
 
 const MapComponent = ({ activeTool, setActiveTool, setMapInstance }) => {
   const mapRef = useRef(); // Ref for the DOM element where the map will be rendered | Ref ສໍາລັບອົງປະກອບ DOM ບ່ອນທີ່ແຜນທີ່ຈະຖືກສະແດງ
@@ -28,6 +29,71 @@ const MapComponent = ({ activeTool, setActiveTool, setMapInstance }) => {
 
   const vectorSource = useRef(new VectorSource()); // Source for features drawn by the user | ແຫຼ່ງຂໍ້ມູນສໍາລັບຄຸນສົມບັດທີ່ຜູ້ໃຊ້ແຕ້ມ
   const measureSource = useRef(new VectorSource()); // Source for features drawn during measurement | ແຫຼ່ງຂໍ້ມູນສໍາລັບຄຸນສົມບັດທີ່ແຕ້ມໃນລະຫວ່າງການວັດແທກ
+
+  // State for Sidebar props (placeholders, replace with actual data management)
+  const [openLayersLoaded, setOpenLayersLoaded] = useState(false);
+  const [layerStates, setLayerStates] = useState({
+    osm: { visible: true, opacity: 1 },
+    satellite: { visible: false, opacity: 1 },
+    // Add other layers as needed
+  });
+  const [districts] = useState([]); // Placeholder for district data
+  const [selectedProvinceForDistricts] = useState(null); // Placeholder
+
+  // Handler for province selection from Sidebar, impacting map view or data loading
+  const onProvinceSelectForMap = useCallback((provinceId) => {
+    console.log("Selected province for map:", provinceId);
+    // Logic to zoom to province, load data, etc.
+  }, []);
+
+  // Handler for layer visibility change from Sidebar
+  const onVisibilityChange = useCallback((layerName, visible) => {
+    setLayerStates((prev) => {
+      const newState = {
+        ...prev,
+        [layerName]: { ...prev[layerName], visible },
+      };
+      if (olMap.current) {
+        olMap.current.getAllLayers().forEach((layer) => {
+          if (layer.get("name") === layerName) {
+            layer.setVisible(visible);
+          }
+        });
+      }
+      return newState;
+    });
+  }, []);
+
+  // Handler for layer opacity change from Sidebar
+  const onOpacityChange = useCallback((layerName, opacity) => {
+    setLayerStates((prev) => {
+      const newState = {
+        ...prev,
+        [layerName]: { ...prev[layerName], opacity },
+      };
+      if (olMap.current) {
+        olMap.current.getAllLayers().forEach((layer) => {
+          if (layer.get("name") === layerName) {
+            layer.setOpacity(opacity);
+          }
+        });
+      }
+      return newState;
+    });
+  }, []);
+
+  // Placeholder functions for DistrictSelector
+  const toggleDistrict = useCallback((districtId) => {
+    console.log("Toggle district:", districtId);
+  }, []);
+
+  const handleLoadData = useCallback((dataType) => {
+    console.log("Load data for type:", dataType);
+  }, []);
+
+  const handleDistrictOpacityChange = useCallback((districtId, opacity) => {
+    console.log(`District ${districtId} opacity changed to ${opacity}`);
+  }, []);
 
   // Helper function to format line length for display | ຟັງຊັນຊ່ວຍເຫຼືອເພື່ອຈັດຮູບແບບຄວາມຍາວຂອງເສັ້ນສໍາລັບການສະແດງຜົນ
   const formatLength = (line) => {
@@ -120,7 +186,7 @@ const MapComponent = ({ activeTool, setActiveTool, setMapInstance }) => {
     // Initialize the OpenLayers Map | ເລີ່ມຕົ້ນແຜນທີ່ OpenLayers
     olMap.current = new Map({
       target: mapRef.current, // Link the map to the div element using the ref | ເຊື່ອມຕໍ່ແຜນທີ່ກັບອົງປະກອບ div ໂດຍໃຊ້ ref
-      layers: [baseLayers.osm, vectorLayer, measureLayer], // Add OSM as the default base layer, vector, and measure layers | ເພີ່ມ OSM ເປັນຊັ້ນພື້ນຖານເລີ່ມຕົ້ນ, ຊັ້ນ vector, ແລະຊັ້ນວັດແທກ
+      layers: [baseLayers.osm, baseLayers.satellite, vectorLayer, measureLayer], // Add all base layers, vector, and measure layers
       view: new View({
         center: fromLonLat([102.6, 17.97]), // Set initial map center to Laos (convert LonLat to map projection) | ກໍານົດຈຸດກາງແຜນທີ່ເບື້ອງຕົ້ນຢູ່ລາວ (ປ່ຽນ LonLat ເປັນການຄາດຄະເນແຜນທີ່)
         zoom: 7, // Set initial zoom level | ກໍານົດລະດັບການຊູມເບື້ອງຕົ້ນ
@@ -128,6 +194,16 @@ const MapComponent = ({ activeTool, setActiveTool, setMapInstance }) => {
     });
 
     setMapInstance(olMap.current); // Pass the initialized map instance to the parent component | ສົ່ງອິນສະແຕນແຜນທີ່ທີ່ເລີ່ມຕົ້ນໄປຫາອົງປະກອບຫຼັກ
+    setOpenLayersLoaded(true); // Indicate that OpenLayers map is loaded
+
+    // Apply initial layer visibility and opacity
+    olMap.current.getAllLayers().forEach((layer) => {
+      const layerName = layer.get("name");
+      if (layerStates[layerName]) {
+        layer.setVisible(layerStates[layerName].visible);
+        layer.setOpacity(layerStates[layerName].opacity);
+      }
+    });
 
     // Mouse position tracking | ຕົວຮັບຟັງເຫດການສໍາລັບການເຄື່ອນໄຫວຕົວຊີ້ເມົ້າເພື່ອສະແດງພິກັດ
     olMap.current.on("pointermove", function (evt) {
@@ -175,7 +251,7 @@ const MapComponent = ({ activeTool, setActiveTool, setMapInstance }) => {
       olMap.current.setTarget(undefined); // Unset the map target to prevent memory leaks | ຍົກເລີກການກໍານົດເປົ້າໝາຍແຜນທີ່ເພື່ອປ້ອງກັນການຮົ່ວໄຫຼຂອງຫນ່ວຍຄວາມຈໍາ
       olMap.current.dispose(); // Dispose of the map to release resources | ຖິ້ມແຜນທີ່ເພື່ອປົດປ່ອຍຊັບພະຍາກອນ
     };
-  }, [setMapInstance]); // Dependency array: re-run this effect if setMapInstance changes (should only run once) | ອາເລການເພິ່ງພາອາໄສ: ແລ່ນຜົນກະທົບນີ້ຄືນໃໝ່ ຖ້າ setMapInstance ປ່ຽນແປງ (ຄວນແລ່ນເທື່ອດຽວເທົ່ານັ້ນ)
+  }, [setMapInstance, layerStates]); // Added layerStates to dependency array to re-apply visibility/opacity
 
   // useEffect hook for managing active tools (draw, measure, identify) | useEffect hook ສໍາລັບການຈັດການເຄື່ອງມືທີ່ໃຊ້ງານ (ແຕ້ມ, ວັດແທກ, ລະບຸຕົວຕົນ)
   // This effect runs whenever `activeTool` or `setActiveTool` changes | ຜົນກະທົບນີ້ແລ່ນເມື່ອໃດກໍຕາມທີ່ `activeTool` ຫຼື `setActiveTool` ປ່ຽນແປງ
@@ -394,6 +470,21 @@ const MapComponent = ({ activeTool, setActiveTool, setMapInstance }) => {
       {/* Add the CoordinateBar component here */}
       {olMap.current && <CoordinateBar map={olMap.current} />}{" "}
       {/* Pass the OpenLayers map instance to CoordinateBar */}
+      {/* Integrate the Sidebar component */}
+      {olMap.current && ( // Only render Sidebar if map is initialized
+        <Sidebar
+          openLayersLoaded={openLayersLoaded}
+          onProvinceSelectForMap={onProvinceSelectForMap}
+          layerStates={layerStates}
+          onVisibilityChange={onVisibilityChange}
+          onOpacityChange={onOpacityChange}
+          districts={districts}
+          toggleDistrict={toggleDistrict}
+          handleLoadData={handleLoadData}
+          handleDistrictOpacityChange={handleDistrictOpacityChange}
+          selectedProvinceForDistricts={selectedProvinceForDistricts}
+        />
+      )}
     </div>
   );
 };
