@@ -18,7 +18,7 @@ import Overlay from "ol/Overlay"; // Used to display HTML elements (like tooltip
 import Select from "ol/interaction/Select"; // Interaction for selecting features on the map | ການໂຕ້ຕອບສໍາລັບການເລືອກຄຸນສົມບັດໃນແຜນທີ່
 import Polygon from "ol/geom/Polygon"; // Geometry type for polygons | ປະເພດເລຂາຄະນິດສໍາລັບຮູບຫຼາຍຫຼ່ຽມ
 import Feature from "ol/Feature"; // OpenLayers Feature object, which holds geometry and properties | ອອບເຈັກຄຸນສົມບັດ OpenLayers, ເຊິ່ງບັນຈຸເລຂາຄະນິດ ແລະຄຸນສົມບັດ
-// import { Units } from 'ol/proj'; // This line is now removed or commented out
+import CoordinateBar from "./ui/CoordinateBar"; // Custom component for displaying coordinates and scale | ອົງປະກອບສໍາລັບສະແດງພິກັດ ແລະ ຂະໜາດ
 
 const MapComponent = ({ activeTool, setActiveTool, setMapInstance }) => {
   const mapRef = useRef(); // Ref for the DOM element where the map will be rendered | Ref ສໍາລັບອົງປະກອບ DOM ບ່ອນທີ່ແຜນທີ່ຈະຖືກສະແດງ
@@ -390,7 +390,10 @@ const MapComponent = ({ activeTool, setActiveTool, setMapInstance }) => {
   return (
     <div className="map-container">
       <div ref={mapRef} id="map"></div>{" "}
-      {/* The div element where the OpenLayers map will be rendered | ອົງປະກອບ div ບ່ອນທີ່ແຜນທີ່ OpenLayers ຈະຖືກສະແດງ */}
+      {/* The div element where the OpenLayers map will be rendered */}
+      {/* Add the CoordinateBar component here */}
+      {olMap.current && <CoordinateBar map={olMap.current} />}{" "}
+      {/* Pass the OpenLayers map instance to CoordinateBar */}
     </div>
   );
 };
