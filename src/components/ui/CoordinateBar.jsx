@@ -152,18 +152,10 @@ const CoordinateBar = ({ map }) => {
   return (
     // ສ່ວນ UI ຂອງ component
     <div className="coordinate-widget-container">
-      {copySuccess && <div className="copy-success-message">{copySuccess}</div>}{" "}
+      {copySuccess && <div className="copy-success-message">{copySuccess}</div>}
       {/* ສະແດງຂໍ້ຄວາມສຳເລັດການຄັດລອກ */}
-      {!isPanelVisible ? ( // ຖ້າ panel ບໍ່ເຫັນ, ສະແດງປຸ່ມເປີດ
-        <button
-          onClick={() => setIsPanelVisible(true)} // ເມື່ອຄລິກ, ເປີດ panel
-          className="coordinate-fab"
-          title="ເປີດແຖບພິກັດ"
-        >
-          <Compass size={20} /> {/* icon Compass */}
-        </button>
-      ) : (
-        // ຖ້າ panel ເຫັນ, ສະແດງ panel ເຕັມ
+      {/* The panel is now conditionally rendered inside the flex container */}
+      {isPanelVisible && (
         <div ref={panelRef} className="coordinate-bar">
           <div className="coordinate-bar-header">
             <h3>Coordinate Tools</h3> {/* ຫົວຂໍ້ */}
@@ -277,6 +269,15 @@ const CoordinateBar = ({ map }) => {
           </div>
         </div>
       )}
+      {/* The FAB is now always rendered, and its click toggles the panel */}
+      <button
+        onClick={() => setIsPanelVisible((prev) => !prev)} // Toggle visibility
+        className="coordinate-fab"
+        title={isPanelVisible ? "ປິດແຖບພິກັດ" : "ເປີດແຖບພິກັດ"}
+      >
+        {isPanelVisible ? <X size={20} /> : <Compass size={20} />}{" "}
+        {/* Change icon based on visibility */}
+      </button>
       <style jsx>{`
         /* CSS Variables - Defined directly in the component for self-containment */
         :root {
@@ -290,6 +291,16 @@ const CoordinateBar = ({ map }) => {
           --color-shadow-dark: rgba(0, 0, 0, 0.5);
           --color-accent-blue: #007acc;
           --color-accent-blue-hover: #0095f7;
+
+          /* New/Adjusted variables for CoordinateBar compactness */
+          --panel-width: 300px; /* Compact width */
+          --panel-padding: 0.75rem; /* Reduced padding */
+          --font-size-panel-header: 1rem; /* Slightly smaller header */
+          --font-size-coords: 0.85rem; /* Smaller coordinate text */
+          --font-size-history-item: 0.8rem; /* Smaller history item text */
+          --font-size-history-utm: 0.7rem; /* Even smaller UTM history */
+          --fab-size: 44px;
+          --gap-fab-panel: 0.75rem; /* Gap between FAB and panel */
         }
 
         .coordinate-widget-container {
@@ -297,10 +308,15 @@ const CoordinateBar = ({ map }) => {
           bottom: 1rem;
           left: 1rem;
           z-index: 1001;
+          display: flex;
+          flex-direction: column; /* Stack items vertically */
+          align-items: flex-start; /* Align contents to the left */
+          gap: var(--gap-fab-panel); /* Gap between panel and FAB */
         }
+
         .coordinate-fab {
-          width: 44px;
-          height: 44px;
+          width: var(--fab-size);
+          height: var(--fab-size);
           border-radius: 50%;
           background-color: var(--color-accent-blue);
           color: white;
@@ -311,6 +327,8 @@ const CoordinateBar = ({ map }) => {
           box-shadow: 0 4px 12px var(--color-shadow-dark);
           cursor: pointer;
           transition: all 0.2s ease-in-out;
+          flex-shrink: 0;
+          order: 2; /* Ensure FAB is always at the bottom */
         }
         .coordinate-fab:hover {
           background-color: var(--color-accent-blue-hover);
@@ -318,25 +336,36 @@ const CoordinateBar = ({ map }) => {
         }
 
         .coordinate-bar {
-          position: absolute;
-          bottom: 1rem;
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 1000;
-          display: flex;
-          flex-direction: column; /* Changed to column for better layout of sections */
-          gap: 1rem; /* Gap between header and details */
+          order: 1; /* Ensure panel is above FAB when visible */
           background-color: rgba(30, 30, 30, 0.75);
           backdrop-filter: blur(10px);
           border-radius: 12px;
           border: 1px solid rgba(255, 255, 255, 0.15);
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
-          padding: 1rem; /* Adjusted padding */
-          width: 380px; /* Fixed width for the panel */
+          padding: var(--panel-padding);
+          width: var(--panel-width);
           max-height: calc(
-            100vh - 2rem - var(--header-height)
-          ); /* Max height to fit screen */
-          overflow-y: auto; /* Enable scrolling for history */
+            100vh - 2rem - var(--fab-size) - var(--gap-fab-panel) - 1rem
+          ); /* Adjust max-height based on FAB and bottom margin */
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: var(--panel-padding);
+
+          /* Animation for appearance */
+          transform-origin: bottom left;
+          animation: fadeInScale 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeInScale {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
         }
 
         .coordinate-bar-header {
@@ -350,7 +379,7 @@ const CoordinateBar = ({ map }) => {
 
         .coordinate-bar-header h3 {
           margin: 0;
-          font-size: 1.15rem;
+          font-size: var(--font-size-panel-header);
           color: var(--color-text-light);
         }
 
@@ -368,14 +397,14 @@ const CoordinateBar = ({ map }) => {
         .coordinate-details {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: var(--panel-padding);
         }
 
         .current-coords-section,
         .history-section {
           background-color: var(--color-inset-bg);
           border-radius: 8px;
-          padding: 12px 16px;
+          padding: 10px 14px;
           border: 1px solid var(--color-border-light);
           box-shadow: 0 4px 15px var(--color-shadow-dark);
         }
@@ -383,8 +412,8 @@ const CoordinateBar = ({ map }) => {
         .current-coords-section h4,
         .history-section h4 {
           margin-top: 0;
-          margin-bottom: 0.75rem;
-          font-size: 1rem;
+          margin-bottom: 0.6rem;
+          font-size: 0.95rem;
           color: var(--color-text-light);
         }
 
@@ -392,16 +421,16 @@ const CoordinateBar = ({ map }) => {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 0.5rem;
-          font-size: 0.9rem;
+          margin-bottom: 0.4rem;
+          font-size: var(--font-size-coords);
           color: var(--color-text-light);
         }
 
         .coord-row-small {
-          font-size: 0.8rem;
+          font-size: 0.75rem;
           color: var(--color-text-muted);
           text-align: right;
-          margin-top: -0.25rem;
+          margin-top: -0.2rem;
         }
 
         .coord-row button {
@@ -409,7 +438,7 @@ const CoordinateBar = ({ map }) => {
           border: none;
           color: var(--color-text-muted);
           cursor: pointer;
-          margin-left: 10px;
+          margin-left: 8px;
           display: flex;
           align-items: center;
           transition: color 0.2s ease;
@@ -420,9 +449,14 @@ const CoordinateBar = ({ map }) => {
 
         .copy-success-message {
           position: absolute;
-          top: -30px; /* Position above the FAB or panel */
-          left: 50%;
-          transform: translateX(-50%);
+          /* Positioning is now relative to the viewport/map, not widget-container flex flow */
+          bottom: calc(
+            1rem + var(--fab-size) + var(--gap-fab-panel) + 0.5rem
+          ); /* Position above FAB + its container bottom offset */
+          left: 1rem; /* Align with widget container left */
+          transform: translateX(
+            0
+          ); /* Remove transform as it's aligned to left */
           background-color: #4caf50;
           color: white;
           padding: 5px 10px;
@@ -430,6 +464,7 @@ const CoordinateBar = ({ map }) => {
           font-size: 0.8rem;
           white-space: nowrap;
           animation: fadeOut 2s forwards;
+          z-index: 1002;
         }
 
         @keyframes fadeOut {
@@ -446,7 +481,7 @@ const CoordinateBar = ({ map }) => {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 0.75rem;
+          margin-bottom: 0.6rem;
         }
 
         .clear-history-button {
@@ -456,8 +491,8 @@ const CoordinateBar = ({ map }) => {
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 5px;
-          font-size: 0.85rem;
+          gap: 4px;
+          font-size: 0.8rem;
           transition: color 0.2s ease;
         }
         .clear-history-button:hover {
@@ -467,50 +502,45 @@ const CoordinateBar = ({ map }) => {
         .history-list {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 6px;
         }
 
         .history-item {
-          background-color: rgba(
-            0,
-            0,
-            0,
-            0.15
-          ); /* Slightly darker for individual items */
+          background-color: rgba(0, 0, 0, 0.15);
           border-radius: 6px;
-          padding: 8px 12px;
+          padding: 6px 10px;
           display: flex;
           flex-direction: column;
-          gap: 4px;
-          font-size: 0.85rem;
+          gap: 3px;
+          font-size: var(--font-size-history-item);
           border: 1px solid rgba(255, 255, 255, 0.08);
-          position: relative; /* For numbering */
+          position: relative;
         }
 
         .history-item-number {
           position: absolute;
-          top: 8px;
-          left: 8px;
-          font-size: 0.7rem;
+          top: 6px;
+          left: 6px;
+          font-size: 0.65rem;
           color: var(--color-text-muted);
         }
 
         .history-item-coords {
           display: flex;
           flex-direction: column;
-          margin-left: 20px; /* Space for number */
+          margin-left: 18px;
           color: var(--color-text-light);
         }
 
         .history-item-utm {
-          font-size: 0.75rem;
+          font-size: var(--font-size-history-utm);
           color: var(--color-text-muted);
         }
 
         .history-item-actions {
           display: flex;
-          gap: 8px;
-          margin-top: 5px;
+          gap: 6px;
+          margin-top: 4px;
           justify-content: flex-end;
         }
 
@@ -520,12 +550,12 @@ const CoordinateBar = ({ map }) => {
           border-radius: 4px;
           color: var(--color-text-muted);
           cursor: pointer;
-          padding: 4px 8px;
+          padding: 3px 6px;
           display: flex;
           align-items: center;
           justify-content: center;
           transition: all 0.2s ease;
-          margin-left: 0; /* Override default margin */
+          margin-left: 0;
         }
         .history-item-actions button:hover {
           background-color: rgba(255, 255, 255, 0.15);
@@ -540,7 +570,7 @@ const CoordinateBar = ({ map }) => {
           text-align: center;
           font-style: italic;
           color: var(--color-text-muted);
-          padding: 20px 0;
+          padding: 15px 0;
         }
       `}</style>
     </div>
