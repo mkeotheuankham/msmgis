@@ -25,6 +25,7 @@ import {
   Info,
   ZoomIn,
   ZoomOut,
+  Layers,
   ScanSearch,
   Fullscreen,
   Target,
@@ -537,6 +538,17 @@ const RibbonToolbar = ({ activeTool, setActiveTool, mapInstance }) => {
                 <button className="ribbon-button" onClick={handleFullExtent}>
                   <Fullscreen size={18} />
                   Full Extent (ຂອບເຂດເຕັມ)
+                </button>
+              </div>
+              <div className="ribbon-group-title">Navigation (ການນຳທາງ)</div>
+            </div>
+            <div className="ribbon-group">
+              <div className="ribbon-buttons">
+                {/* Zoom In Button */}
+                {/* ປຸ່ມຊູມເຂົ້າ */}
+                <button className="ribbon-button" onClick={handleZoomIn}>
+                  <Layers size={18} />
+                  Open Layers (ເປີດຊັ້ນຂໍ້ມູນ)
                 </button>
               </div>
               <div className="ribbon-group-title">Navigation (ການນຳທາງ)</div>
