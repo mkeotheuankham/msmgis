@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import RibbonToolbar from "./components/RibbonToolbar";
 import MapComponent from "./components/MapComponent";
+import StatusBar from "./components/StatusBar";
 import "./App.css"; // For global styles
-import { Grid, Globe } from "lucide-react"; // Import icons
 
 function App() {
   const [activeTool, setActiveTool] = useState("select");
@@ -39,70 +39,14 @@ function App() {
         graticuleEnabled={graticuleEnabled} // Pass graticule state
         graticuleType={graticuleType} // Pass graticule type
       />
-      <div className="status-bar">
-        <div className="status-item">
-          <span>Coordinates:</span>
-          <span className="coordinates" id="coordinates">
-            0.0000, 0.0000
-          </span>
-        </div>
-        <div className="status-item">
-          <span>Scale:</span>
-          <span id="scale">1:1,000,000</span>
-        </div>
-        {/* <div className="status-item">
-          <span>Projection:</span>
-          <span>EPSG:3857</span>
-        </div> */}
-        {/* Graticule Layer Button */}
-        <div className="status-item graticule-button-container">
-          <button
-            className={`graticule-toggle-button ${
-              graticuleEnabled ? "active" : ""
-            }`}
-            onClick={() => {
-              // If graticule is currently disabled, enable it (defaulting to WGS84 if not set)
-              if (!graticuleEnabled) {
-                setGraticuleEnabled(true);
-              }
-              // Always toggle the options dropdown visibility
-              setShowGraticuleOptions((prev) => !prev);
-            }}
-            title="Toggle Graticule Layer and Options"
-          >
-            <Grid size={16} />
-            Graticule ({graticuleEnabled ? graticuleType : "Off"})
-          </button>
-          {showGraticuleOptions && (
-            <div className="graticule-options">
-              <button
-                className={`graticule-option ${
-                  graticuleType === "WGS84" && graticuleEnabled ? "active" : ""
-                }`}
-                onClick={() => handleGraticuleTypeChange("WGS84")}
-              >
-                <Globe size={14} /> WGS84
-              </button>
-              <button
-                className={`graticule-option ${
-                  graticuleType === "UTM" && graticuleEnabled ? "active" : ""
-                }`}
-                onClick={() => handleGraticuleTypeChange("UTM")}
-              >
-                <Grid size={14} /> UTM
-              </button>
-              <button
-                className={`graticule-option ${
-                  !graticuleEnabled ? "active" : ""
-                }`}
-                onClick={handleGraticuleToggle}
-              >
-                <span className="mr-1">✖</span> Off
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      <StatusBar
+        graticuleEnabled={graticuleEnabled}
+        graticuleType={graticuleType}
+        showGraticuleOptions={showGraticuleOptions}
+        setShowGraticuleOptions={setShowGraticuleOptions}
+        handleGraticuleToggle={handleGraticuleToggle}
+        handleGraticuleTypeChange={handleGraticuleTypeChange}
+      />
     </div>
   );
 }

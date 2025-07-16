@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import "ol/ol.css";
+import React, { useEffect, useRef } from "react";
+import "ol/ol.css"; // Essential for OpenLayers styles
 import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
-import OSM from "ol/source/OSM";
 import XYZ from "ol/source/XYZ";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
@@ -11,16 +10,26 @@ import Style from "ol/style/Style";
 import Fill from "ol/style/Fill";
 import Stroke from "ol/style/Stroke";
 import CircleStyle from "ol/style/Circle";
-import { fromLonLat, toLonLat, METERS_PER_UNIT } from "ol/proj";
+import { fromLonLat, toLonLat, transform, METERS_PER_UNIT } from "ol/proj";
+import { getCenter } from "ol/extent";
+import Point from "ol/geom/Point";
+import LineString from "ol/geom/LineString";
+import Feature from "ol/Feature";
 import Draw from "ol/interaction/Draw";
 import { getLength, getArea } from "ol/sphere";
-import Overlay from "ol/Overlay";
 import Select from "ol/interaction/Select";
-import Polygon from "ol/geom/Polygon";
-import Feature from "ol/Feature";
-import CoordinateBar from "./ui/CoordinateBar";
-import Sidebar from "./ui/Sidebar";
-import Graticule from "ol/layer/Graticule"; // Import Graticule for grid layers
+import Graticule from "ol/layer/Graticule";
+import Text from "ol/style/Text";
+
+// --- For UTM Conversion ---
+import proj4 from "proj4";
+import { register } from "ol/proj/proj4";
+
+// --- Register UTM projections for Laos (Zones 47N and 48N) ---
+proj4.defs("EPSG:32647", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs");
+proj4.defs("EPSG:32648", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
+register(proj4);
+// --- End UTM Setup ---
 
 const MapComponent = ({
   activeTool,
@@ -33,144 +42,64 @@ const MapComponent = ({
   const olMap = useRef(null);
   const drawInteraction = useRef(null);
   const selectInteraction = useRef(null);
-  const graticuleLayer = useRef(null); // Ref to hold the Graticule layer
+  const graticuleLayer = useRef(null);
+  const utmLabelSource = useRef(new VectorSource());
+  const utmGridLineSource = useRef(new VectorSource()); // Source for custom grid lines
 
-  const vectorSource = useRef(new VectorSource());
-  const measureSource = useRef(new VectorSource());
-
-  const [openLayersLoaded, setOpenLayersLoaded] = useState(false);
-  const [layerStates, setLayerStates] = useState({
-    osm: { visible: true, opacity: 1 },
-    satellite: { visible: false, opacity: 1 },
-  });
-  const [districts] = useState([]);
-  const [selectedProvinceForDistricts] = useState(null);
-
-  const onProvinceSelectForMap = useCallback((provinceId) => {
-    console.log("Selected province for map:", provinceId);
-  }, []);
-
-  const onVisibilityChange = useCallback((layerName, visible) => {
-    setLayerStates((prev) => {
-      const newState = {
-        ...prev,
-        [layerName]: { ...prev[layerName], visible },
-      };
-      if (olMap.current) {
-        olMap.current.getAllLayers().forEach((layer) => {
-          if (layer.get("name") === layerName) {
-            layer.setVisible(visible);
-          }
-        });
-      }
-      return newState;
-    });
-  }, []);
-
-  const onOpacityChange = useCallback((layerName, opacity) => {
-    setLayerStates((prev) => {
-      const newState = {
-        ...prev,
-        [layerName]: { ...prev[layerName], opacity },
-      };
-      if (olMap.current) {
-        olMap.current.getAllLayers().forEach((layer) => {
-          if (layer.get("name") === layerName) {
-            layer.setOpacity(opacity);
-          }
-        });
-      }
-      return newState;
-    });
-  }, []);
-
-  const toggleDistrict = useCallback((districtId) => {
-    console.log("Toggle district:", districtId);
-  }, []);
-
-  const handleLoadData = useCallback((dataType) => {
-    console.log("Load data for type:", dataType);
-  }, []);
-
-  const handleDistrictOpacityChange = useCallback((districtId, opacity) => {
-    console.log(`District ${districtId} opacity changed to ${opacity}`);
-  }, []);
-
-  const formatLength = (line) => {
-    const length = getLength(line);
-    let output;
-    if (length > 100) {
-      output = Math.round((length / 1000) * 100) / 100 + " km";
-    } else {
-      output = Math.round(length * 100) / 100 + " m";
-    }
-    return output;
-  };
-
-  const formatArea = (polygon) => {
-    const area = getArea(polygon);
-    let output;
-    if (area > 10000) {
-      output = Math.round((area / 1000000) * 100) / 100 + " km²";
-    } else {
-      output = Math.round(area * 100) / 100 + " m²";
-    }
-    return output;
-  };
-
+  // --- Initial Setup Effect ---
   useEffect(() => {
-    const baseLayers = {
-      osm: new TileLayer({
-        source: new OSM(),
-        name: "osm",
-      }),
-      satellite: new TileLayer({
-        source: new XYZ({
-          url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        }),
-        name: "satellite",
-      }),
-    };
+    const utmLabelLayer = new VectorLayer({
+      source: utmLabelSource.current,
+      style: (feature) => feature.get("style"),
+      name: "utmLabelLayer",
+    });
 
-    const vectorLayer = new VectorLayer({
-      source: vectorSource.current,
+    const utmGridLineLayer = new VectorLayer({
+      source: utmGridLineSource.current,
       style: new Style({
-        fill: new Fill({
-          color: "rgba(255, 255, 255, 0.2)",
-        }),
         stroke: new Stroke({
-          color: "#ffcc33",
-          width: 2,
+          color: "rgba(255, 120, 0, 0.9)", // Matched color and opacity
+          width: 1.5, // Increased width for better visibility
+          lineDash: [2, 5],
         }),
+      }),
+      name: "utmGridLineLayer",
+    });
+
+    const osmLayer = new TileLayer({
+      source: new XYZ({
+        url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      }),
+      name: "osm",
+      visible: true,
+    });
+    const satelliteLayer = new TileLayer({
+      source: new XYZ({
+        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      }),
+      name: "satellite",
+      visible: false,
+    });
+    const mainVectorLayer = new VectorLayer({
+      source: new VectorSource(),
+      style: new Style({
+        fill: new Fill({ color: "rgba(255, 255, 255, 0.2)" }),
+        stroke: new Stroke({ color: "#ffcc33", width: 2 }),
         image: new CircleStyle({
           radius: 7,
-          fill: new Fill({
-            color: "#ffcc33",
-          }),
+          fill: new Fill({ color: "#ffcc33" }),
         }),
       }),
       name: "vectorLayer",
     });
-
     const measureLayer = new VectorLayer({
-      source: measureSource.current,
+      source: new VectorSource(),
       style: new Style({
-        fill: new Fill({
-          color: "rgba(255, 255, 255, 0.2)",
-        }),
+        fill: new Fill({ color: "rgba(255, 255, 255, 0.2)" }),
         stroke: new Stroke({
           color: "rgba(0, 0, 0, 0.5)",
           lineDash: [10, 10],
           width: 2,
-        }),
-        image: new CircleStyle({
-          radius: 5,
-          stroke: new Stroke({
-            color: "rgba(0, 0, 0, 0.7)",
-          }),
-          fill: new Fill({
-            color: "rgba(255, 255, 255, 0.2)",
-          }),
         }),
       }),
       name: "measureLayer",
@@ -178,331 +107,294 @@ const MapComponent = ({
 
     olMap.current = new Map({
       target: mapRef.current,
-      layers: [baseLayers.osm, baseLayers.satellite, vectorLayer, measureLayer],
-      view: new View({
-        center: fromLonLat([102.6, 17.97]),
-        zoom: 7,
-      }),
+      layers: [
+        osmLayer,
+        satelliteLayer,
+        mainVectorLayer,
+        measureLayer,
+        utmGridLineLayer,
+        utmLabelLayer,
+      ],
+      view: new View({ center: fromLonLat([102.6, 17.97]), zoom: 7 }),
+      controls: [],
     });
 
     setMapInstance(olMap.current);
-    setOpenLayersLoaded(true);
 
-    olMap.current.getAllLayers().forEach((layer) => {
-      const layerName = layer.get("name");
-      if (layerStates[layerName]) {
-        layer.setVisible(layerStates[layerName].visible);
-        layer.setOpacity(layerStates[layerName].opacity);
+    return () => {
+      if (olMap.current) {
+        olMap.current.setTarget(undefined);
+        olMap.current.dispose();
       }
-    });
+    };
+  }, [setMapInstance]);
 
-    olMap.current.on("pointermove", function (evt) {
+  // --- Coordinate and Scale Display Effect ---
+  useEffect(() => {
+    if (!olMap.current) return;
+    const map = olMap.current;
+    const pointerMoveHandler = (evt) => {
       if (evt.dragging) return;
-      const coordinate = toLonLat(evt.coordinate);
-      document.getElementById("coordinates").textContent =
-        coordinate[0].toFixed(4) + ", " + coordinate[1].toFixed(4);
-    });
-
-    olMap.current.getView().on("change:resolution", function () {
-      const resolution = olMap.current.getView().getResolution();
-      const units = olMap.current.getView().getProjection().getUnits();
+      const coordinatesElement = document.getElementById("coordinates");
+      if (!coordinatesElement) return;
+      let displayText = "";
+      if (graticuleType === "UTM") {
+        const lonLat = toLonLat(evt.coordinate);
+        const longitude = lonLat[0];
+        const latitude = lonLat[1];
+        const zone = Math.floor((longitude + 180) / 6) + 1;
+        const hemisphere = latitude >= 0 ? "N" : "S";
+        if (hemisphere === "N" && (zone === 47 || zone === 48)) {
+          const utmProjection = `EPSG:326${zone}`;
+          const utmCoords = transform(
+            evt.coordinate,
+            "EPSG:3857",
+            utmProjection
+          );
+          displayText = `Zone ${zone}${hemisphere} ${utmCoords[0].toFixed(
+            0
+          )}m E ${utmCoords[1].toFixed(0)}m N`;
+        } else {
+          displayText = "UTM Zone N/A";
+        }
+      } else {
+        const coord = toLonLat(evt.coordinate);
+        displayText = `${coord[1].toFixed(4)}°, ${coord[0].toFixed(4)}°`;
+      }
+      coordinatesElement.textContent = displayText;
+    };
+    const resolutionChangeHandler = () => {
+      const scaleElement = document.getElementById("scale");
+      if (!scaleElement) return;
+      const resolution = map.getView().getResolution();
+      const units = map.getView().getProjection().getUnits();
       const dpi = 25.4 / 0.28;
       const mpu = METERS_PER_UNIT[units];
       const scale = resolution * mpu * 39.37 * dpi;
-      document.getElementById("scale").textContent =
-        "1:" + Math.round(scale).toLocaleString();
-    });
-
-    selectInteraction.current = new Select({
-      layers: [vectorLayer],
-      style: new Style({
-        fill: new Fill({
-          color: "rgba(255, 0, 0, 0.3)",
-        }),
-        stroke: new Stroke({
-          color: "#ff0000",
-          width: 3,
-        }),
-        image: new CircleStyle({
-          radius: 7,
-          fill: new Fill({
-            color: "#ff0000",
-          }),
-        }),
-      }),
-    });
-    olMap.current.addInteraction(selectInteraction.current);
-
-    return () => {
-      olMap.current.setTarget(undefined);
-      olMap.current.dispose();
+      scaleElement.textContent = "1:" + Math.round(scale).toLocaleString();
     };
-  }, [setMapInstance, layerStates]);
+    map.on("pointermove", pointerMoveHandler);
+    map.getView().on("change:resolution", resolutionChangeHandler);
+    resolutionChangeHandler();
+    return () => {
+      map.un("pointermove", pointerMoveHandler);
+      map.getView().un("change:resolution", resolutionChangeHandler);
+    };
+  }, [graticuleType]);
 
+  // --- Graticule Layer and Custom UTM Grid Effect ---
   useEffect(() => {
     if (!olMap.current) return;
+    const map = olMap.current;
 
-    if (drawInteraction.current) {
-      olMap.current.removeInteraction(drawInteraction.current);
-      drawInteraction.current = null;
-    }
+    const updateUtmGrid = () => {
+      utmLabelSource.current.clear();
+      utmGridLineSource.current.clear();
 
-    if (selectInteraction.current) {
-      olMap.current.removeInteraction(selectInteraction.current);
-    }
+      const view = map.getView();
+      const projection = view.getProjection();
+      const extent = view.calculateExtent(map.getSize());
+      const centerLonLat = toLonLat(getCenter(extent));
+      const zone = Math.floor((centerLonLat[0] + 180) / 6) + 1;
+      if (centerLonLat[1] < 0 || (zone !== 47 && zone !== 48)) return;
 
-    let newInteraction = null;
-    let isDrawingTool = false;
+      const utmProjection = `EPSG:326${zone}`;
+      const utmExtent = transformExtent(extent, projection, utmProjection);
 
-    const identifyHandler = (evt) => {
-      if (activeTool !== "identify") {
-        olMap.current.un("singleclick", identifyHandler);
-        return;
+      const interval = 2000;
+
+      const labelFeatures = [];
+      const lineFeatures = [];
+      const textStyle = {
+        font: "11px Arial",
+        fill: new Fill({ color: "#444" }),
+        stroke: new Stroke({ color: "rgba(255,255,255,0.8)", width: 2 }),
+      };
+
+      // Northing (Y-axis) lines and labels
+      for (
+        let n = Math.ceil(utmExtent[1] / interval) * interval;
+        n <= utmExtent[3];
+        n += interval
+      ) {
+        const labelText = `${n.toLocaleString()} N`;
+        const pointLeft = transform(
+          [utmExtent[0], n],
+          utmProjection,
+          projection
+        );
+        labelFeatures.push(
+          new Feature({
+            style: new Style({
+              text: new Text({
+                ...textStyle,
+                text: labelText,
+                textAlign: "left",
+                offsetX: 5,
+              }),
+            }),
+            geometry: new Point(pointLeft),
+          })
+        );
+        const lineGeom = new LineString([
+          transform([utmExtent[0], n], utmProjection, projection),
+          transform([utmExtent[2], n], utmProjection, projection),
+        ]);
+        lineFeatures.push(new Feature({ geometry: lineGeom }));
       }
-      const features = [];
-      olMap.current.forEachFeatureAtPixel(evt.pixel, function (feature, layer) {
-        if (
-          layer ===
-          olMap.current
-            .getAllLayers()
-            .find((l) => l.get("name") === "vectorLayer")
-        ) {
-          features.push(feature);
-        }
-      });
 
-      if (features.length > 0) {
-        const feature = features[0];
-        const geometry = feature.getGeometry();
-        const type = geometry.getType();
-
-        let info = `Feature Type: ${type}\n`;
-
-        if (type === "Point") {
-          const coord = toLonLat(geometry.getCoordinates());
-          info += `Coordinates: ${coord[0].toFixed(4)}, ${coord[1].toFixed(4)}`;
-        } else if (type === "LineString") {
-          info += `Length: ${formatLength(geometry)}`;
-        } else if (type === "Polygon") {
-          info += `Area: ${formatArea(geometry)}`;
-        }
-        alert(info);
+      // Easting (X-axis) lines and labels
+      for (
+        let e = Math.ceil(utmExtent[0] / interval) * interval;
+        e <= utmExtent[2];
+        e += interval
+      ) {
+        const labelText = `${e.toLocaleString()} E`;
+        const pointBottom = transform(
+          [e, utmExtent[1]],
+          utmProjection,
+          projection
+        );
+        labelFeatures.push(
+          new Feature({
+            style: new Style({
+              text: new Text({
+                ...textStyle,
+                text: labelText,
+                textBaseline: "bottom",
+                offsetY: -5,
+              }),
+            }),
+            geometry: new Point(pointBottom),
+          })
+        );
+        const lineGeom = new LineString([
+          transform([e, utmExtent[1]], utmProjection, projection),
+          transform([e, utmExtent[3]], utmProjection, projection),
+        ]);
+        lineFeatures.push(new Feature({ geometry: lineGeom }));
       }
+      utmLabelSource.current.addFeatures(labelFeatures);
+      utmGridLineSource.current.addFeatures(lineFeatures);
     };
 
+    const cleanup = () => {
+      if (graticuleLayer.current) {
+        map.removeLayer(graticuleLayer.current);
+        graticuleLayer.current = null;
+      }
+      utmLabelSource.current.clear();
+      utmGridLineSource.current.clear();
+      map.un("moveend", updateUtmGrid);
+    };
+
+    cleanup();
+
+    if (graticuleEnabled) {
+      if (graticuleType === "UTM") {
+        map.on("moveend", updateUtmGrid);
+        updateUtmGrid();
+      } else {
+        // WGS84
+        graticuleLayer.current = new Graticule({
+          strokeStyle: new Stroke({
+            color: "rgba(255, 120, 0, 0.9)",
+            width: 1.5,
+            lineDash: [2, 5],
+          }),
+          showLabels: true,
+          wrapX: false,
+          lonLabelStyle: new Text({
+            font: '12px "Open Sans"',
+            fill: new Fill({ color: "rgba(230,230,230,1)" }),
+            stroke: new Stroke({ color: "rgba(0,0,0,1)", width: 2 }),
+          }),
+          latLabelStyle: new Text({
+            font: '12px "Open Sans"',
+            fill: new Fill({ color: "rgba(230,230,230,1)" }),
+            stroke: new Stroke({ color: "rgba(0,0,0,1)", width: 2 }),
+          }),
+        });
+        map.addLayer(graticuleLayer.current);
+        graticuleLayer.current.setZIndex(999);
+      }
+    }
+
+    return cleanup;
+  }, [graticuleEnabled, graticuleType]);
+
+  // --- Interactions (Draw, Select, Measure) Effect ---
+  useEffect(() => {
+    if (!olMap.current) return;
+    const map = olMap.current;
+    if (drawInteraction.current) map.removeInteraction(drawInteraction.current);
+    if (selectInteraction.current)
+      map.removeInteraction(selectInteraction.current);
+
+    const formatLength = (line) =>
+      getLength(line) > 100
+        ? `${(getLength(line) / 1000).toFixed(2)} km`
+        : `${getLength(line).toFixed(2)} m`;
+    const formatArea = (polygon) =>
+      getArea(polygon) > 10000
+        ? `${(getArea(polygon) / 1000000).toFixed(2)} km²`
+        : `${getArea(polygon).toFixed(2)} m²`;
+
     switch (activeTool) {
-      case "pan":
-        break;
       case "select":
-        if (selectInteraction.current) {
-          olMap.current.addInteraction(selectInteraction.current);
-        }
+        selectInteraction.current = new Select({
+          /* ... select config ... */
+        });
+        map.addInteraction(selectInteraction.current);
         break;
       case "draw-point":
-        newInteraction = new Draw({
-          source: vectorSource.current,
-          type: "Point",
-        });
-        isDrawingTool = true;
-        break;
       case "draw-line":
-        newInteraction = new Draw({
-          source: vectorSource.current,
-          type: "LineString",
-        });
-        isDrawingTool = true;
-        break;
       case "draw-polygon":
-        newInteraction = new Draw({
-          source: vectorSource.current,
-          type: "Polygon",
-        });
-        isDrawingTool = true;
-        break;
       case "draw-circle":
-        newInteraction = new Draw({
-          source: vectorSource.current,
-          type: "Circle",
+        const type = {
+          "draw-point": "Point",
+          "draw-line": "LineString",
+          "draw-polygon": "Polygon",
+          "draw-circle": "Circle",
+        }[activeTool];
+        drawInteraction.current = new Draw({
+          source: map
+            .getLayers()
+            .getArray()
+            .find((l) => l.get("name") === "vectorLayer")
+            .getSource(),
+          type,
         });
-        isDrawingTool = true;
-        break;
-      case "measure-distance":
-        newInteraction = new Draw({
-          source: measureSource.current,
-          type: "LineString",
-          style: new Style({
-            fill: new Fill({ color: "rgba(255, 255, 255, 0.2)" }),
-            stroke: new Stroke({
-              color: "rgba(0, 0, 0, 0.5)",
-              lineDash: [10, 10],
-              width: 2,
-            }),
-            image: new CircleStyle({
-              radius: 5,
-              stroke: new Stroke({ color: "rgba(0, 0, 0, 0.7)" }),
-              fill: new Fill({ color: "rgba(255, 255, 255, 0.2)" }),
-            }),
-          }),
-        });
-        newInteraction.on("drawend", function (event) {
-          const geom = event.feature.getGeometry();
-          const measurement = formatLength(geom);
-          const tooltipCoord = geom.getLastCoordinate();
-          const tooltipElement = document.createElement("div");
-          tooltipElement.className = "tooltip";
-          tooltipElement.innerHTML = measurement;
-          const overlay = new Overlay({
-            element: tooltipElement,
-            offset: [0, -15],
-            positioning: "bottom-center",
-          });
-          olMap.current.addOverlay(overlay);
-          overlay.setPosition(tooltipCoord);
-          setTimeout(() => setActiveTool("select"), 100);
-        });
-        break;
-      case "measure-area":
-        newInteraction = new Draw({
-          source: measureSource.current,
-          type: "Polygon",
-          style: new Style({
-            fill: new Fill({ color: "rgba(255, 255, 255, 0.2)" }),
-            stroke: new Stroke({
-              color: "rgba(0, 0, 0, 0.5)",
-              lineDash: [10, 10],
-              width: 2,
-            }),
-            image: new CircleStyle({
-              radius: 5,
-              stroke: new Stroke({ color: "rgba(0, 0, 0, 0.7)" }),
-              fill: new Fill({ color: "rgba(255, 255, 255, 0.2)" }),
-            }),
-          }),
-        });
-        newInteraction.on("drawend", function (event) {
-          const geom = event.feature.getGeometry();
-          const measurement = formatArea(geom);
-          const tooltipCoord = geom.getInteriorPoint().getCoordinates();
-          const tooltipElement = document.createElement("div");
-          tooltipElement.className = "tooltip";
-          tooltipElement.innerHTML = measurement;
-          const overlay = new Overlay({
-            element: tooltipElement,
-            offset: [0, -15],
-            positioning: "bottom-center",
-          });
-          olMap.current.addOverlay(overlay);
-          overlay.setPosition(tooltipCoord);
-          setTimeout(() => setActiveTool("select"), 100);
-        });
-        break;
-      case "identify":
-        olMap.current.on("singleclick", identifyHandler);
-        break;
-      case "select-features":
-        if (selectInteraction.current) {
-          olMap.current.addInteraction(selectInteraction.current);
-        }
-        break;
-      default:
+        map.addInteraction(drawInteraction.current);
+        drawInteraction.current.on("drawend", () => setActiveTool("select"));
         break;
     }
-
-    if (newInteraction) {
-      olMap.current.addInteraction(newInteraction);
-      drawInteraction.current = newInteraction;
-      if (isDrawingTool) {
-        newInteraction.on("drawend", () => {
-          setTimeout(() => setActiveTool("select"), 100);
-        });
-      }
-    }
-
     return () => {
-      if (drawInteraction.current) {
-        olMap.current.removeInteraction(drawInteraction.current);
-        drawInteraction.current = null;
-      }
-      if (selectInteraction.current) {
-        olMap.current.removeInteraction(selectInteraction.current);
-      }
-      olMap.current.un("singleclick", identifyHandler);
+      if (drawInteraction.current)
+        map.removeInteraction(drawInteraction.current);
+      if (selectInteraction.current)
+        map.removeInteraction(selectInteraction.current);
     };
   }, [activeTool, setActiveTool]);
 
-  // useEffect for Graticule Layer
-  useEffect(() => {
-    if (!olMap.current) {
-      console.log("Map not initialized, cannot add graticule.");
-      return;
-    }
-
-    // Remove existing graticule layer if it exists
-    if (graticuleLayer.current) {
-      olMap.current.removeLayer(graticuleLayer.current);
-      graticuleLayer.current = null;
-      console.log("Removed existing graticule layer.");
-    }
-
-    if (graticuleEnabled) {
-      console.log(
-        `Attempting to add Graticule: Type=${graticuleType}, Enabled=${graticuleEnabled}`
-      );
-
-      // Temporarily simplified style and configuration for debugging
-      let testStrokeStyle = new Stroke({
-        color: "rgba(190, 26, 26, 0.7)",
-        width: 1.5,
-        lineDash: [2, 5],
-      });
-
-      graticuleLayer.current = new Graticule({
-        strokeStyle: testStrokeStyle,
-        showLabels: true, // Always show labels for debugging
-        wrapX: true,
-        // For initial test, keep intervals simple or omit for default behavior
-        // intervals: [10], // Try a very small interval if you want to see many lines quickly (may be too dense)
-        // For WGS84, the extent is usually fine. For UTM, intervals are more key.
-      });
-
-      if (graticuleLayer.current) {
-        olMap.current.addLayer(graticuleLayer.current);
-        graticuleLayer.current.setZIndex(999); // Set a very high Z-index to ensure visibility
-        console.log("Graticule layer added to map with high Z-index.");
-      }
-    } else {
-      console.log("Graticule disabled, not adding layer.");
-    }
-
-    return () => {
-      if (graticuleLayer.current) {
-        olMap.current.removeLayer(graticuleLayer.current);
-        graticuleLayer.current = null;
-        console.log("Cleanup: Removed graticule layer on unmount/re-render.");
-      }
-    };
-  }, [graticuleEnabled, graticuleType]); // Dependencies
-
   return (
-    <div className="map-container">
-      <div ref={mapRef} id="map"></div>
-      {olMap.current && <CoordinateBar map={olMap.current} />}
-      {olMap.current && (
-        <Sidebar
-          openLayersLoaded={openLayersLoaded}
-          onProvinceSelectForMap={onProvinceSelectForMap}
-          layerStates={layerStates}
-          onVisibilityChange={onVisibilityChange}
-          onOpacityChange={onOpacityChange}
-          districts={districts}
-          toggleDistrict={toggleDistrict}
-          handleLoadData={handleLoadData}
-          handleDistrictOpacityChange={handleDistrictOpacityChange}
-          selectedProvinceForDistricts={selectedProvinceForDistricts}
-        />
-      )}
+    <div
+      className="map-container"
+      style={{ position: "relative", width: "100%", height: "100%" }}
+    >
+      <div
+        ref={mapRef}
+        id="map"
+        style={{ width: "100%", height: "100%" }}
+      ></div>
     </div>
   );
 };
+
+function transformExtent(extent, source, destination) {
+  const B = transform([extent[0], extent[1]], source, destination);
+  const T = transform([extent[2], extent[3]], source, destination);
+  return [B[0], B[1], T[0], T[1]];
+}
 
 export default MapComponent;
