@@ -152,12 +152,23 @@ body {
 
 .ribbon-content {
   display: flex;
-  gap: var(--spacing-xl);
   padding: var(--spacing-sm) 0;
-  min-height: 80px;
+  min-height: 80px; /* Set a fixed height to prevent jitter */
   border-top: 1px solid var(--color-dark-border);
   background: var(--color-dark-surface-alt);
   box-shadow: inset 0 1px var(--spacing-xs) var(--color-inner-shadow);
+}
+
+/* New Tab Pane styles to prevent jitter */
+.tab-pane {
+  display: none; /* Hide inactive tabs */
+  width: 100%;
+  align-items: flex-start;
+  gap: var(--spacing-xl);
+}
+
+.tab-pane.active {
+  display: flex; /* Show the active tab */
 }
 
 .ribbon-group {
@@ -191,6 +202,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center; /* Center content vertically */
   padding: 6px var(--spacing-sm);
   background: rgba(50, 50, 50, 0.6);
   border: 1px solid rgba(80, 80, 80, 0.7);
@@ -199,8 +211,9 @@ body {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   transition: all var(--transition-speed) var(--transition-ease);
-  min-width: 32px;
-  min-height: 32px;
+  min-width: 60px; /* Adjusted min-width for better spacing */
+  height: 55px; /* Fixed height for all buttons */
+  text-align: center;
 }
 
 .ribbon-button:hover {
@@ -222,14 +235,7 @@ body {
 
 .ribbon-button span {
   margin-top: 4px;
-}
-
-.ribbon-button-icon {
-  width: var(--spacing-lg);
-  height: var(--spacing-lg);
-  margin-bottom: var(--spacing-xxs);
-  fill: currentColor;
-  transition: fill var(--transition-speed);
+  line-height: 1.2; /* Improve text wrapping */
 }
 
 /* Map Container */
@@ -244,6 +250,54 @@ body {
   width: 100%;
   height: 100%;
   background-color: #222;
+}
+
+/* --- New Styles for Base Map Dropdown --- */
+.basemap-switcher-container {
+  position: relative;
+  display: inline-block;
+}
+
+.basemap-switcher-menu {
+  position: absolute;
+  top: calc(100% + 5px); /* Position below the button with a small gap */
+  left: 0;
+  background-color: var(--color-dark-surface-alt);
+  border: 1px solid var(--color-dark-border);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  min-width: 150px;
+  padding: var(--spacing-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.basemap-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background-color: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  border-radius: var(--border-radius-sm);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.basemap-option:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-active);
+}
+
+.basemap-option.active {
+  background-color: var(--color-accent-blue);
+  color: var(--color-text-active);
+  font-weight: 600;
 }
 
 /* Other styles... */

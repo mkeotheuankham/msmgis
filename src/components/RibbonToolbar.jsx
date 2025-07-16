@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import Feature from "ol/Feature";
@@ -27,6 +27,9 @@ import {
   ScanSearch,
   Fullscreen,
   Target,
+  Map as StreetMapIcon,
+  Globe,
+  Mountain,
 } from "lucide-react";
 
 const RibbonToolbar = ({
@@ -37,9 +40,24 @@ const RibbonToolbar = ({
   setActiveTab,
   isPanelVisible,
   setIsPanelVisible,
+  layerStates,
+  handleBaseMapChange,
 }) => {
   const [selectedFeature, setSelectedFeature] = useState(null);
+  const [showBaseMapMenu, setShowBaseMapMenu] = useState(false);
+  const baseMapRef = useRef(null);
   const vectorSource = React.useRef(new VectorSource());
+
+  // --- Event listener to close dropdown when clicking outside ---
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (baseMapRef.current && !baseMapRef.current.contains(event.target)) {
+        setShowBaseMapMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const getLayerByName = useCallback(
     (name) => {
@@ -57,7 +75,6 @@ const RibbonToolbar = ({
 
   useEffect(() => {
     if (!mapInstance) return;
-
     let existingVectorLayer = getLayerByName("bufferLayer");
     if (!existingVectorLayer) {
       const newVectorLayer = new VectorLayer({
@@ -96,25 +113,20 @@ const RibbonToolbar = ({
   }, [mapInstance, getLayerByName]);
 
   const handleZoomIn = useCallback(() => {
-    if (mapInstance) {
-      const view = mapInstance.getView();
-      view.setZoom(view.getZoom() + 1);
-    }
+    if (mapInstance)
+      mapInstance.getView().setZoom(mapInstance.getView().getZoom() + 1);
   }, [mapInstance]);
 
   const handleZoomOut = useCallback(() => {
-    if (mapInstance) {
-      const view = mapInstance.getView();
-      view.setZoom(view.getZoom() - 1);
-    }
+    if (mapInstance)
+      mapInstance.getView().setZoom(mapInstance.getView().getZoom() - 1);
   }, [mapInstance]);
 
   const handleZoomToLayer = useCallback(() => {
     if (mapInstance) {
       const vectorLayer = getLayerByName("vectorLayer");
       if (vectorLayer && vectorLayer.getSource().getFeatures().length > 0) {
-        const view = mapInstance.getView();
-        view.fit(vectorLayer.getSource().getExtent(), {
+        mapInstance.getView().fit(vectorLayer.getSource().getExtent(), {
           padding: [50, 50, 50, 50],
           duration: 1000,
         });
@@ -124,8 +136,7 @@ const RibbonToolbar = ({
 
   const handleFullExtent = useCallback(() => {
     if (mapInstance) {
-      const view = mapInstance.getView();
-      view.animate({
+      mapInstance.getView().animate({
         center: fromLonLat([102.6, 17.97]),
         zoom: 7,
         duration: 1000,
@@ -140,29 +151,23 @@ const RibbonToolbar = ({
     }
     const bufferDistanceInput = prompt("Enter buffer distance in meters:");
     const bufferDistanceInMeters = parseFloat(bufferDistanceInput);
-
     if (isNaN(bufferDistanceInMeters) || bufferDistanceInMeters <= 0) {
       alert("Invalid buffer distance. Please enter a positive number.");
       return;
     }
-
     const geometry = selectedFeature.getGeometry();
-    let bufferPolygon;
-    vectorSource.current.clear();
-
     if (geometry.getType() === "Point") {
-      bufferPolygon = OlPolygon.circular(
+      const bufferPolygon = OlPolygon.circular(
         geometry,
         bufferDistanceInMeters,
         64
       ).transform("EPSG:4326", mapInstance.getView().getProjection());
+      const bufferFeature = new Feature(bufferPolygon);
+      vectorSource.current.clear();
+      vectorSource.current.addFeature(bufferFeature);
     } else {
       alert("Buffering is currently supported only for Point features.");
-      return;
     }
-
-    const bufferFeature = new Feature(bufferPolygon);
-    vectorSource.current.addFeature(bufferFeature);
   }, [mapInstance, selectedFeature]);
 
   useEffect(() => {
@@ -171,14 +176,11 @@ const RibbonToolbar = ({
         .getInteractions()
         .getArray()
         .find((interaction) => interaction instanceof Select);
-
       if (select) {
         select.on("select", (event) => {
-          if (event.selected.length > 0) {
-            setSelectedFeature(event.selected[0]);
-          } else {
-            setSelectedFeature(null);
-          }
+          setSelectedFeature(
+            event.selected.length > 0 ? event.selected[0] : null
+          );
         });
       }
     }
@@ -197,6 +199,15 @@ const RibbonToolbar = ({
       </button>
     );
   };
+
+  const baseMaps = [
+    { key: "osm", label: "Street Map", icon: <StreetMapIcon size={18} /> },
+    { key: "satellite", label: "Satellite", icon: <Globe size={18} /> },
+    { key: "topo", label: "Topographic", icon: <Mountain size={18} /> },
+  ];
+
+  const activeBaseMap =
+    baseMaps.find((bm) => layerStates[bm.key]?.visible) || baseMaps[0];
 
   return (
     <div className="ribbon-toolbar">
@@ -222,135 +233,157 @@ const RibbonToolbar = ({
       </div>
 
       <div className="ribbon-content">
-        {activeTab === "home" && (
-          <>
-            <div className="ribbon-group">
-              <div className="ribbon-buttons">
-                <RibbonButton
-                  icon={<Hand size={18} />}
-                  label="Pan (ເລື່ອນ)"
-                  toolName="pan"
-                />
-                <RibbonButton
-                  icon={<MousePointer size={18} />}
-                  label="Select (ເລືອກ)"
-                  toolName="select"
-                />
-                <RibbonButton
-                  icon={<Eraser size={18} />}
-                  label="Clear Map (ລຶບແຜນທີ່)"
-                  onClick={handleClearMap}
-                />
-              </div>
-              <div className="ribbon-group-title">
-                Map Tools (ເຄື່ອງມືແຜນທີ່)
-              </div>
+        <div className={`tab-pane ${activeTab === "home" ? "active" : ""}`}>
+          <div className="ribbon-group">
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<Hand size={18} />}
+                label="Pan"
+                toolName="pan"
+              />
+              <RibbonButton
+                icon={<MousePointer size={18} />}
+                label="Select"
+                toolName="select"
+              />
+              <RibbonButton
+                icon={<Eraser size={18} />}
+                label="Clear Map"
+                onClick={handleClearMap}
+              />
             </div>
-            <div className="ribbon-group">
-              <div className="ribbon-buttons">
-                <RibbonButton
-                  icon={<MapPin size={18} />}
-                  label="Point (ຈຸດ)"
-                  toolName="draw-point"
-                />
-                <RibbonButton
-                  icon={<PenLine size={18} />}
-                  label="Line (ເສັ້ນ)"
-                  toolName="draw-line"
-                />
-                <RibbonButton
-                  icon={<Hexagon size={18} />}
-                  label="Polygon (ຮູບຫຼາຍຫຼ່ຽມ)"
-                  toolName="draw-polygon"
-                />
-                <RibbonButton
-                  icon={<Circle size={18} />}
-                  label="Circle (ວົງມົນ)"
-                  toolName="draw-circle"
-                />
-              </div>
-              <div className="ribbon-group-title">Draw (ແຕ້ມ)</div>
+            <div className="ribbon-group-title">Map Tools</div>
+          </div>
+          <div className="ribbon-group">
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<MapPin size={18} />}
+                label="Point"
+                toolName="draw-point"
+              />
+              <RibbonButton
+                icon={<PenLine size={18} />}
+                label="Line"
+                toolName="draw-line"
+              />
+              <RibbonButton
+                icon={<Hexagon size={18} />}
+                label="Polygon"
+                toolName="draw-polygon"
+              />
+              <RibbonButton
+                icon={<Circle size={18} />}
+                label="Circle"
+                toolName="draw-circle"
+              />
             </div>
-            <div className="ribbon-group">
-              <div className="ribbon-buttons">
-                <RibbonButton
-                  icon={<Ruler size={18} />}
-                  label="Distance (ໄລຍະທາງ)"
-                  toolName="measure-distance"
-                />
-                <RibbonButton
-                  icon={<LandPlot size={18} />}
-                  label="Area (ພື້ນທີ່)"
-                  toolName="measure-area"
-                />
-                <RibbonButton
-                  icon={<Info size={18} />}
-                  label="Identify (ລະບຸ)"
-                  toolName="identify"
-                />
-              </div>
-              <div className="ribbon-group-title">Measure (ວັດແທກ)</div>
+            <div className="ribbon-group-title">Draw</div>
+          </div>
+          <div className="ribbon-group">
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<Ruler size={18} />}
+                label="Distance"
+                toolName="measure-distance"
+              />
+              <RibbonButton
+                icon={<LandPlot size={18} />}
+                label="Area"
+                toolName="measure-area"
+              />
+              <RibbonButton
+                icon={<Info size={18} />}
+                label="Identify"
+                toolName="identify"
+              />
             </div>
-          </>
-        )}
+            <div className="ribbon-group-title">Measure</div>
+          </div>
+        </div>
 
-        {activeTab === "map" && (
-          <>
-            <div className="ribbon-group">
-              <div className="ribbon-buttons">
-                <RibbonButton
-                  icon={<ZoomIn size={18} />}
-                  label="Zoom In (ຊູມເຂົ້າ)"
-                  onClick={handleZoomIn}
-                />
-                <RibbonButton
-                  icon={<ZoomOut size={18} />}
-                  label="Zoom Out (ຊູມອອກ)"
-                  onClick={handleZoomOut}
-                />
-                <RibbonButton
-                  icon={<ScanSearch size={18} />}
-                  label="Zoom to Layer (ຊູມໄປທີ່ Layer)"
-                  onClick={handleZoomToLayer}
-                />
-                <RibbonButton
-                  icon={<Fullscreen size={18} />}
-                  label="Full Extent (ຂອບເຂດເຕັມ)"
-                  onClick={handleFullExtent}
-                />
-              </div>
-              <div className="ribbon-group-title">Navigation (ການນຳທາງ)</div>
+        <div className={`tab-pane ${activeTab === "map" ? "active" : ""}`}>
+          <div className="ribbon-group">
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<ZoomIn size={18} />}
+                label="Zoom In"
+                onClick={handleZoomIn}
+              />
+              <RibbonButton
+                icon={<ZoomOut size={18} />}
+                label="Zoom Out"
+                onClick={handleZoomOut}
+              />
+              <RibbonButton
+                icon={<ScanSearch size={18} />}
+                label="Zoom to Layer"
+                onClick={handleZoomToLayer}
+              />
+              <RibbonButton
+                icon={<Fullscreen size={18} />}
+                label="Full Extent"
+                onClick={handleFullExtent}
+              />
             </div>
-            <div className="ribbon-group">
-              <div className="ribbon-buttons">
-                <RibbonButton
-                  icon={<Layers size={18} />}
-                  label="Layers Panel"
-                  isActive={isPanelVisible}
-                  onClick={() => setIsPanelVisible((prev) => !prev)}
-                />
-              </div>
-              <div className="ribbon-group-title">View</div>
+            <div className="ribbon-group-title">Navigation</div>
+          </div>
+          <div className="ribbon-group">
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<Layers size={18} />}
+                label="Layers Panel"
+                isActive={isPanelVisible}
+                onClick={() => setIsPanelVisible((prev) => !prev)}
+              />
             </div>
-          </>
-        )}
+            <div className="ribbon-group-title">View</div>
+          </div>
+          <div className="ribbon-group">
+            <div className="ribbon-buttons" ref={baseMapRef}>
+              <div className="basemap-switcher-container">
+                <RibbonButton
+                  icon={activeBaseMap.icon}
+                  label={activeBaseMap.label}
+                  isActive={showBaseMapMenu}
+                  onClick={() => setShowBaseMapMenu((prev) => !prev)}
+                />
+                {showBaseMapMenu && (
+                  <div className="basemap-switcher-menu">
+                    {baseMaps.map((bm) => (
+                      <button
+                        key={bm.key}
+                        className={`basemap-option ${
+                          layerStates[bm.key]?.visible ? "active" : ""
+                        }`}
+                        onClick={() => {
+                          handleBaseMapChange(bm.key);
+                          setShowBaseMapMenu(false);
+                        }}
+                      >
+                        {bm.icon}
+                        <span>{bm.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="ribbon-group-title">Base Maps</div>
+          </div>
+        </div>
 
-        {activeTab === "analysis" && (
-          <>
-            <div className="ribbon-group">
-              <div className="ribbon-buttons">
-                <RibbonButton
-                  icon={<Target size={18} />}
-                  label="Buffer (ເຂດກັນຊົນ)"
-                  onClick={handleBuffer}
-                />
-              </div>
-              <div className="ribbon-group-title">
-                Geoprocessing (ການປະມວນຜົນພູມສາດ)
-              </div>
+        <div className={`tab-pane ${activeTab === "analysis" ? "active" : ""}`}>
+          <div className="ribbon-group">
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<Target size={18} />}
+                label="Buffer"
+                onClick={handleBuffer}
+              />
             </div>
-          </>
-        )}
+            <div className="ribbon-group-title">Geoprocessing</div>
+          </div>
+        </div>
       </div>
     </div>
   );

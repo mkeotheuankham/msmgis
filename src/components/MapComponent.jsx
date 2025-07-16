@@ -52,18 +52,20 @@ const MapComponent = ({
       source: utmLabelSource.current,
       style: (feature) => feature.get("style"),
       name: "utmLabelLayer",
+      zIndex: 1000,
     });
 
     const utmGridLineLayer = new VectorLayer({
       source: utmGridLineSource.current,
       style: new Style({
         stroke: new Stroke({
-          color: "rgba(255, 120, 0, 0.9)", // Matched color and opacity
-          width: 1.5, // Increased width for better visibility
+          color: "rgba(255, 120, 0, 0.7)",
+          width: 1.5,
           lineDash: [2, 5],
         }),
       }),
       name: "utmGridLineLayer",
+      zIndex: 998,
     });
 
     const osmLayer = new TileLayer({
@@ -80,6 +82,14 @@ const MapComponent = ({
       name: "satellite",
       visible: false,
     });
+    const topoLayer = new TileLayer({
+      source: new XYZ({
+        url: "https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png",
+      }),
+      name: "topo",
+      visible: false,
+    });
+
     const mainVectorLayer = new VectorLayer({
       source: new VectorSource(),
       style: new Style({
@@ -110,6 +120,7 @@ const MapComponent = ({
       layers: [
         osmLayer,
         satelliteLayer,
+        topoLayer,
         mainVectorLayer,
         measureLayer,
         utmGridLineLayer,

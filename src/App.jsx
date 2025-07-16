@@ -10,19 +10,16 @@ function App() {
   const [activeTool, setActiveTool] = useState("select");
   const [activeTab, setActiveTab] = useState("home");
   const [mapInstance, setMapInstance] = useState(null);
-
-  // State to control Panel visibility
   const [isPanelVisible, setIsPanelVisible] = useState(false);
-
-  // State for Graticule (Grid lines)
   const [graticuleEnabled, setGraticuleEnabled] = useState(false);
   const [graticuleType, setGraticuleType] = useState("WGS84");
   const [showGraticuleOptions, setShowGraticuleOptions] = useState(false);
 
-  // State for map layers
+  // Updated layer states to include a new base map
   const [layerStates, setLayerStates] = useState({
-    osm: { name: "OpenStreetMap", visible: true, opacity: 1 },
-    satellite: { name: "Satellite Imagery", visible: false, opacity: 1 },
+    osm: { name: "Street Map", visible: true, opacity: 1 },
+    satellite: { name: "Satellite", visible: false, opacity: 1 },
+    topo: { name: "Topographic", visible: false, opacity: 1 }, // New topographic map
   });
 
   // --- Handlers ---
@@ -65,6 +62,31 @@ function App() {
     }
   };
 
+  // Updated handler for Base Map Switching
+  const handleBaseMapChange = (baseMapKey) => {
+    const newLayerStates = { ...layerStates };
+    // Set all base maps to invisible first
+    Object.keys(newLayerStates).forEach((key) => {
+      if (["osm", "satellite", "topo"].includes(key)) {
+        newLayerStates[key].visible = false;
+      }
+    });
+    // Set the selected one to visible
+    newLayerStates[baseMapKey].visible = true;
+
+    setLayerStates(newLayerStates);
+
+    // Also update the layers on the map instance directly
+    if (mapInstance) {
+      mapInstance.getLayers().forEach((layer) => {
+        const layerName = layer.get("name");
+        if (["osm", "satellite", "topo"].includes(layerName)) {
+          layer.setVisible(layerName === baseMapKey);
+        }
+      });
+    }
+  };
+
   return (
     <div className="app-container">
       <RibbonToolbar
@@ -75,6 +97,8 @@ function App() {
         mapInstance={mapInstance}
         isPanelVisible={isPanelVisible}
         setIsPanelVisible={setIsPanelVisible}
+        layerStates={layerStates}
+        handleBaseMapChange={handleBaseMapChange}
       />
       <div className="main-content">
         <MapComponent
@@ -84,7 +108,6 @@ function App() {
           graticuleEnabled={graticuleEnabled}
           graticuleType={graticuleType}
         />
-        {/* The Panel is now always rendered, but its visibility is controlled by a CSS class for smooth animation */}
         <Panel
           isVisible={isPanelVisible}
           layerStates={layerStates}
