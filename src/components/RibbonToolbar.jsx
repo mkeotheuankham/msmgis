@@ -30,6 +30,7 @@ import {
   Map as StreetMapIcon,
   Globe,
   Mountain,
+  Image,
 } from "lucide-react";
 
 const RibbonToolbar = ({
@@ -202,8 +203,15 @@ const RibbonToolbar = ({
 
   const baseMaps = [
     { key: "osm", label: "Street Map", icon: <StreetMapIcon size={18} /> },
-    { key: "satellite", label: "Satellite", icon: <Globe size={18} /> },
+    { key: "satellite", label: "Esri Satellite", icon: <Image size={18} /> },
+    {
+      key: "googleSatellite",
+      label: "Google Satellite",
+      icon: <Globe size={18} />,
+    },
+    { key: "googleHybrid", label: "Google Hybrid", icon: <Layers size={18} /> },
     { key: "topo", label: "Topographic", icon: <Mountain size={18} /> },
+    { key: "carto", label: "Carto Voyager", icon: <MapPin size={18} /> },
   ];
 
   const activeBaseMap =

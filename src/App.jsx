@@ -15,11 +15,14 @@ function App() {
   const [graticuleType, setGraticuleType] = useState("WGS84");
   const [showGraticuleOptions, setShowGraticuleOptions] = useState(false);
 
-  // Updated layer states to include a new base map
+  // Updated layer states to include the new base maps
   const [layerStates, setLayerStates] = useState({
     osm: { name: "Street Map", visible: true, opacity: 1 },
-    satellite: { name: "Satellite", visible: false, opacity: 1 },
-    topo: { name: "Topographic", visible: false, opacity: 1 }, // New topographic map
+    satellite: { name: "Esri Satellite", visible: false, opacity: 1 },
+    topo: { name: "Topographic", visible: false, opacity: 1 },
+    googleSatellite: { name: "Google Satellite", visible: false, opacity: 1 },
+    googleHybrid: { name: "Google Hybrid", visible: false, opacity: 1 },
+    carto: { name: "Carto Voyager", visible: false, opacity: 1 },
   });
 
   // --- Handlers ---
@@ -65,12 +68,22 @@ function App() {
   // Updated handler for Base Map Switching
   const handleBaseMapChange = (baseMapKey) => {
     const newLayerStates = { ...layerStates };
+    const baseMapKeys = [
+      "osm",
+      "satellite",
+      "topo",
+      "googleSatellite",
+      "googleHybrid",
+      "carto",
+    ];
+
     // Set all base maps to invisible first
-    Object.keys(newLayerStates).forEach((key) => {
-      if (["osm", "satellite", "topo"].includes(key)) {
+    baseMapKeys.forEach((key) => {
+      if (newLayerStates[key]) {
         newLayerStates[key].visible = false;
       }
     });
+
     // Set the selected one to visible
     newLayerStates[baseMapKey].visible = true;
 
@@ -80,7 +93,7 @@ function App() {
     if (mapInstance) {
       mapInstance.getLayers().forEach((layer) => {
         const layerName = layer.get("name");
-        if (["osm", "satellite", "topo"].includes(layerName)) {
+        if (baseMapKeys.includes(layerName)) {
           layer.setVisible(layerName === baseMapKey);
         }
       });

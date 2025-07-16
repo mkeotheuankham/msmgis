@@ -48,26 +48,7 @@ const MapComponent = ({
 
   // --- Initial Setup Effect ---
   useEffect(() => {
-    const utmLabelLayer = new VectorLayer({
-      source: utmLabelSource.current,
-      style: (feature) => feature.get("style"),
-      name: "utmLabelLayer",
-      zIndex: 1000,
-    });
-
-    const utmGridLineLayer = new VectorLayer({
-      source: utmGridLineSource.current,
-      style: new Style({
-        stroke: new Stroke({
-          color: "rgba(255, 120, 0, 0.7)",
-          width: 1.5,
-          lineDash: [2, 5],
-        }),
-      }),
-      name: "utmGridLineLayer",
-      zIndex: 998,
-    });
-
+    // --- Base Map Layers ---
     const osmLayer = new TileLayer({
       source: new XYZ({
         url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -75,7 +56,7 @@ const MapComponent = ({
       name: "osm",
       visible: true,
     });
-    const satelliteLayer = new TileLayer({
+    const esriSatelliteLayer = new TileLayer({
       source: new XYZ({
         url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       }),
@@ -89,7 +70,47 @@ const MapComponent = ({
       name: "topo",
       visible: false,
     });
+    const googleSatelliteLayer = new TileLayer({
+      source: new XYZ({
+        url: "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}",
+      }),
+      name: "googleSatellite",
+      visible: false,
+    });
+    const googleHybridLayer = new TileLayer({
+      source: new XYZ({
+        url: "https://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}",
+      }),
+      name: "googleHybrid",
+      visible: false,
+    });
+    const cartoLayer = new TileLayer({
+      source: new XYZ({
+        url: "https://{a-d}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
+      }),
+      name: "carto",
+      visible: false,
+    });
 
+    // --- Vector & Label Layers ---
+    const utmLabelLayer = new VectorLayer({
+      source: utmLabelSource.current,
+      style: (feature) => feature.get("style"),
+      name: "utmLabelLayer",
+      zIndex: 1000,
+    });
+    const utmGridLineLayer = new VectorLayer({
+      source: utmGridLineSource.current,
+      style: new Style({
+        stroke: new Stroke({
+          color: "rgba(255, 120, 0, 0.8)",
+          width: 2,
+          lineDash: [4, 4],
+        }),
+      }),
+      name: "utmGridLineLayer",
+      zIndex: 998,
+    });
     const mainVectorLayer = new VectorLayer({
       source: new VectorSource(),
       style: new Style({
@@ -118,9 +139,14 @@ const MapComponent = ({
     olMap.current = new Map({
       target: mapRef.current,
       layers: [
+        // Base maps are at the bottom
         osmLayer,
-        satelliteLayer,
+        esriSatelliteLayer,
         topoLayer,
+        googleSatelliteLayer,
+        googleHybridLayer,
+        cartoLayer,
+        // Vector and label layers are on top
         mainVectorLayer,
         measureLayer,
         utmGridLineLayer,
@@ -310,8 +336,8 @@ const MapComponent = ({
         graticuleLayer.current = new Graticule({
           strokeStyle: new Stroke({
             color: "rgba(255, 120, 0, 0.9)",
-            width: 1.5,
-            lineDash: [2, 5],
+            width: 2,
+            lineDash: [4, 4],
           }),
           showLabels: true,
           wrapX: false,
@@ -389,10 +415,7 @@ const MapComponent = ({
   }, [activeTool, setActiveTool]);
 
   return (
-    <div
-      className="map-container"
-      style={{ position: "relative", width: "100%", height: "100%" }}
-    >
+    <div className="map-container">
       <div
         ref={mapRef}
         id="map"
