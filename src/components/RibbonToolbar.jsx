@@ -2,14 +2,12 @@ import React, { useState, useCallback, useEffect } from "react";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import Feature from "ol/Feature";
-import { containsCoordinate } from "ol/extent";
-import Point from "ol/geom/Point";
 import OlPolygon from "ol/geom/Polygon";
-import Style from "ol/style/Style"; // Added
-import Fill from "ol/style/Fill"; // Added
-import Stroke from "ol/style/Stroke"; // Added
-import { fromLonLat } from "ol/proj"; // Added
-import Select from "ol/interaction/Select"; // Added
+import Style from "ol/style/Style";
+import Fill from "ol/style/Fill";
+import Stroke from "ol/style/Stroke";
+import { fromLonLat } from "ol/proj";
+import Select from "ol/interaction/Select";
 
 // Import Lucide React Icons
 import {
@@ -31,389 +29,218 @@ import {
   Target,
 } from "lucide-react";
 
-const RibbonToolbar = ({ activeTool, setActiveTool, mapInstance }) => {
-  // State to manage the active tab in the ribbon toolbar (e.g., "home", "map", "analysis")
-  // ສະຖານະເພື່ອຈັດການແຖບທີ່ເປີດໃຊ້ງານຢູ່ໃນແຖບເຄື່ອງມື Ribbon (ເຊັ່ນ: "home", "map", "analysis")
-  const [activeTab, setActiveTab] = useState("home");
-  // State to store the currently selected feature on the map
-  // ສະຖານະເພື່ອເກັບລັກສະນະທີ່ຖືກເລືອກໃນປັດຈຸບັນຢູ່ໃນແຜນທີ່
+const RibbonToolbar = ({
+  activeTool,
+  setActiveTool,
+  mapInstance,
+  activeTab,
+  setActiveTab,
+  isPanelVisible,
+  setIsPanelVisible,
+}) => {
   const [selectedFeature, setSelectedFeature] = useState(null);
-  // useRef to create a persistent VectorSource instance for buffering, preventing re-creation on re-renders
-  // useRef ເພື່ອສ້າງ Instance ຂອງ VectorSource ທີ່ຄົງຢູ່ສຳລັບການ buffering, ປ້ອງກັນການສ້າງໃໝ່ໃນເວລາ Rerender
   const vectorSource = React.useRef(new VectorSource());
 
-  // Function to get a layer from the map by its given name
-  // ຟັງຊັນເພື່ອນໍາເອົາ Layer ຈາກແຜນທີ່ໂດຍໃຊ້ຊື່ທີ່ໃຫ້ມາ
   const getLayerByName = useCallback(
     (name) => {
-      if (!mapInstance) return null; // If mapInstance is not available, return null
-      // ຖ້າ mapInstance ບໍ່ມີ, ໃຫ້ສົ່ງຄ່າ Null
+      if (!mapInstance) return null;
       let layerFound = null;
       mapInstance.getLayers().forEach((layer) => {
         if (layer.get("name") === name) {
-          // Check if the layer's name matches
-          // ກວດເບິ່ງວ່າຊື່ Layer ກົງກັນຫຼືບໍ່
           layerFound = layer;
         }
       });
       return layerFound;
     },
-    [mapInstance] // Dependency array: Recalculate if mapInstance changes
-    // Dependency array: ຄິດໄລ່ໃໝ່ຖ້າ mapInstance ປ່ຽນແປງ
+    [mapInstance]
   );
 
-  // useEffect hook to initialize the vector layer for buffer features if it doesn't already exist on the map
-  // useEffect Hook ເພື່ອເລີ່ມຕົ້ນ Vector Layer ສໍາລັບຄຸນສົມບັດ Buffer ຖ້າມັນຍັງບໍ່ມີຢູ່ໃນແຜນທີ່
   useEffect(() => {
-    if (!mapInstance) return; // Exit if mapInstance is not available
-    // ອອກຖ້າ mapInstance ບໍ່ມີ
+    if (!mapInstance) return;
 
-    let existingVectorLayer = getLayerByName("bufferLayer"); // Try to get an existing "bufferLayer"
-    // ພະຍາຍາມເອົາ "bufferLayer" ທີ່ມີຢູ່
+    let existingVectorLayer = getLayerByName("bufferLayer");
     if (!existingVectorLayer) {
-      // If no existing buffer layer is found
-      // ຖ້າບໍ່ພົບ Layer Buffer ທີ່ມີຢູ່
       const newVectorLayer = new VectorLayer({
-        source: vectorSource.current, // Use the persistent vectorSource for this layer
-        // ໃຊ້ VectorSource ທີ່ຄົງຢູ່ສໍາລັບ Layer ນີ້
-        name: "bufferLayer", // Assign a name to the layer for easy retrieval
-        // ກໍານົດຊື່ໃຫ້ Layer ເພື່ອຄວາມສະດວກໃນການເອີ້ນຄືນ
+        source: vectorSource.current,
+        name: "bufferLayer",
         style: new Style({
-          // Define the visual style for buffer features
-          // ກໍານົດຮູບແບບສີສັນສໍາລັບຄຸນສົມບັດ Buffer
-          fill: new Fill({
-            // Fill style for polygons
-            // ຮູບແບບການເຕີມສີສໍາລັບ Polygon
-            color: "rgba(0, 255, 0, 0.2)", // Semi-transparent green fill
-            // ສີຂຽວໂປ່ງໃສ 0.2
-          }),
-          stroke: new Stroke({
-            // Stroke style for lines and outlines
-            // ຮູບແບບເສັ້ນຂອບສໍາລັບເສັ້ນແລະຮູບຮ່າງ
-            color: "#00ff00", // Green border
-            // ຂອບສີຂຽວ
-            width: 2, // 2 pixels wide
-            // ຂະໜາດ 2 Pixels
-            lineDash: [5, 5], // Dashed line style
-            // ຮູບແບບເສັ້ນຈຸດ
-          }),
+          fill: new Fill({ color: "rgba(0, 255, 0, 0.2)" }),
+          stroke: new Stroke({ color: "#00ff00", width: 2, lineDash: [5, 5] }),
         }),
       });
-      mapInstance.addLayer(newVectorLayer); // Add the new buffer layer to the map
-      // ເພີ່ມ Layer Buffer ໃໝ່ເຂົ້າໃນແຜນທີ່
+      mapInstance.addLayer(newVectorLayer);
     }
-  }, [mapInstance, getLayerByName]); // Dependencies: Re-run if mapInstance or getLayerByName changes
-  // Dependencies: ເຮັດວຽກຄືນໃໝ່ຖ້າ mapInstance ຫຼື getLayerByName ປ່ຽນແປງ
+  }, [mapInstance, getLayerByName]);
 
-  // Handler for changing the active tab in the ribbon
-  // ຕົວຈັດການສຳລັບການປ່ຽນແຖບທີ່ເປີດໃຊ້ງານຢູ່ໃນ Ribbon
   const handleTabClick = (tab) => {
-    setActiveTab(tab); // Update the activeTab state
-    // ອັບເດດສະຖານະ ActiveTab
+    setActiveTab(tab);
   };
 
-  // Handler for setting the active map tool (e.g., pan, select, draw)
-  // ຕົວຈັດການສຳລັບການຕັ້ງຄ່າເຄື່ອງມືແຜນທີ່ທີ່ເປີດໃຊ້ງານ (ເຊັ່ນ: Pan, Select, Draw)
   const handleToolClick = useCallback(
     (tool) => {
-      setActiveTool(tool); // Update the activeTool state passed via props
-      // ອັບເດດສະຖານະ ActiveTool ທີ່ສົ່ງຜ່ານ Props
+      setActiveTool(tool);
     },
-    [setActiveTool] // Dependency: Recalculate if setActiveTool function changes
-    // Dependency: ຄິດໄລ່ຄືນໃໝ່ຖ້າຟັງຊັນ setActiveTool ປ່ຽນແປງ
+    [setActiveTool]
   );
 
-  // Handler to clear all features and overlays from the map
-  // ຕົວຈັດການເພື່ອລຶບຄຸນສົມບັດ ແລະ Overlays ທັງໝົດອອກຈາກແຜນທີ່
   const handleClearMap = useCallback(() => {
     if (mapInstance) {
-      // Get and clear features from the 'vectorLayer' (for drawings)
-      // ເອົາແລະລຶບຄຸນສົມບັດຈາກ 'vectorLayer' (ສຳລັບການແຕ້ມຮູບ)
       const vectorLayer = getLayerByName("vectorLayer");
-      if (vectorLayer) {
-        vectorLayer.getSource().clear();
-      }
-      // Get and clear features from the 'measureLayer' (for measurements)
-      // ເອົາແລະລຶບຄຸນສົມບັດຈາກ 'measureLayer' (ສຳລັບການວັດແທກ)
+      if (vectorLayer) vectorLayer.getSource().clear();
       const measureLayer = getLayerByName("measureLayer");
-      if (measureLayer) {
-        measureLayer.getSource().clear();
-      }
-      // Get and clear features from the 'bufferLayer' (for buffer analysis results)
-      // ເອົາແລະລຶບຄຸນສົມບັດຈາກ 'bufferLayer' (ສຳລັບຜົນການວິເຄາະ Buffer)
+      if (measureLayer) measureLayer.getSource().clear();
       const bufferLayer = getLayerByName("bufferLayer");
-      if (bufferLayer) {
-        bufferLayer.getSource().clear();
-      }
-
-      // Remove all overlays (like tooltips) from the map
-      // ລຶບ Overlays ທັງໝົດ (ເຊັ່ນ: Tooltips) ອອກຈາກແຜນທີ່
+      if (bufferLayer) bufferLayer.getSource().clear();
       mapInstance.getOverlays().clear();
     }
-  }, [mapInstance, getLayerByName]); // Dependencies: Re-run if mapInstance or getLayerByName changes
-  // Dependencies: ເຮັດວຽກຄືນໃໝ່ຖ້າ mapInstance ຫຼື getLayerByName ປ່ຽນແປງ
+  }, [mapInstance, getLayerByName]);
 
-  // Handler for zooming in the map
-  // ຕົວຈັດການສຳລັບການຊູມເຂົ້າແຜນທີ່
   const handleZoomIn = useCallback(() => {
     if (mapInstance) {
-      const view = mapInstance.getView(); // Get the current map view
-      // ເອົາ View ແຜນທີ່ປັດຈຸບັນ
-      view.setZoom(view.getZoom() + 1); // Increase zoom level by 1
-      // ເພີ່ມລະດັບການຊູມຂຶ້ນ 1
+      const view = mapInstance.getView();
+      view.setZoom(view.getZoom() + 1);
     }
-  }, [mapInstance]); // Dependency: Re-run if mapInstance changes
-  // Dependency: ເຮັດວຽກຄືນໃໝ່ຖ້າ mapInstance ປ່ຽນແປງ
+  }, [mapInstance]);
 
-  // Handler for zooming out the map
-  // ຕົວຈັດການສຳລັບການຊູມອອກແຜນທີ່
   const handleZoomOut = useCallback(() => {
     if (mapInstance) {
-      const view = mapInstance.getView(); // Get the current map view
-      // ເອົາ View ແຜນທີ່ປັດຈຸບັນ
-      view.setZoom(view.getZoom() - 1); // Decrease zoom level by 1
-      // ຫຼຸດລະດັບການຊູມລົງ 1
+      const view = mapInstance.getView();
+      view.setZoom(view.getZoom() - 1);
     }
-  }, [mapInstance]); // Dependency: Re-run if mapInstance changes
-  // Dependency: ເຮັດວຽກຄືນໃໝ່ຖ້າ mapInstance ປ່ຽນແປງ
+  }, [mapInstance]);
 
-  // Handler for zooming the map to the extent of features in the 'vectorLayer'
-  // ຕົວຈັດການສຳລັບການຊູມແຜນທີ່ໄປຍັງຂອບເຂດຂອງຄຸນສົມບັດໃນ 'vectorLayer'
   const handleZoomToLayer = useCallback(() => {
     if (mapInstance) {
-      const vectorLayer = getLayerByName("vectorLayer"); // Get the vector layer
-      // ເອົາ Vector Layer
-      // Check if the layer exists and contains features
-      // ກວດເບິ່ງວ່າ Layer ມີຢູ່ ແລະມີຄຸນສົມບັດຫຼືບໍ່
+      const vectorLayer = getLayerByName("vectorLayer");
       if (vectorLayer && vectorLayer.getSource().getFeatures().length > 0) {
-        const view = mapInstance.getView(); // Get the map view
-        // ເອົາ View ແຜນທີ່
+        const view = mapInstance.getView();
         view.fit(vectorLayer.getSource().getExtent(), {
-          // Fit the view to the extent of all features in the vector layer
-          // ປັບ View ໃຫ້ພໍດີກັບຂອບເຂດຂອງຄຸນສົມບັດທັງໝົດໃນ Vector Layer
-          padding: [50, 50, 50, 50], // Add padding around the features
-          // ເພີ່ມ Padding ອ້ອມຮອບຄຸນສົມບັດ
-          duration: 1000, // Animation duration in milliseconds
-          // ໄລຍະເວລາການເຄື່ອນໄຫວເປັນ Milliseconds
+          padding: [50, 50, 50, 50],
+          duration: 1000,
         });
       }
     }
-  }, [mapInstance, getLayerByName]); // Dependencies: Re-run if mapInstance or getLayerByName changes
-  // Dependencies: ເຮັດວຽກຄືນໃໝ່ຖ້າ mapInstance ຫຼື getLayerByName ປ່ຽນແປງ
+  }, [mapInstance, getLayerByName]);
 
-  // Handler for resetting the map view to its initial full extent (centered on Laos)
-  // ຕົວຈັດການສຳລັບການຕັ້ງຄ່າ View ແຜນທີ່ຄືນໃໝ່ໃຫ້ເປັນຂອບເຂດເຕັມ (ຈຸດສູນກາງຢູ່ລາວ)
   const handleFullExtent = useCallback(() => {
     if (mapInstance) {
-      const view = mapInstance.getView(); // Get the map view
-      // ເອົາ View ແຜນທີ່
+      const view = mapInstance.getView();
       view.animate({
-        // Animate the view to the specified center and zoom level
-        // ສົ່ງ View ໄປທີ່ຈຸດສູນກາງ ແລະລະດັບການຊູມທີ່ກຳນົດ
-        center: fromLonLat([102.6, 17.97]), // Center coordinates for Laos (longitude, latitude)
-        // ພິກັດຈຸດສູນກາງສໍາລັບປະເທດລາວ (ເສັ້ນແວງ, ເສັ້ນຂະໜານ)
-        zoom: 7, // Initial zoom level
-        // ລະດັບການຊູມເບື້ອງຕົ້ນ
-        duration: 1000, // Animation duration
-        // ໄລຍະເວລາການເຄື່ອນໄຫວ
+        center: fromLonLat([102.6, 17.97]),
+        zoom: 7,
+        duration: 1000,
       });
     }
-  }, [mapInstance]); // Dependency: Re-run if mapInstance changes
-  // Dependency: ເຮັດວຽກຄືນໃໝ່ຖ້າ mapInstance ປ່ຽນແປງ
+  }, [mapInstance]);
 
-  // Handler for performing buffer analysis on a selected feature
-  // ຕົວຈັດການສຳລັບການວິເຄາະ Buffer ໃນ Feature ທີ່ເລືອກ
   const handleBuffer = useCallback(() => {
-    // Check if map or a feature is selected
-    // ກວດເບິ່ງວ່າເລືອກແຜນທີ່ ຫຼື Feature
     if (!mapInstance || !selectedFeature) {
-      alert("Please select a feature on the map first."); // Prompt user to select a feature
-      // ກະລຸນາເລືອກ Feature ຢູ່ໃນແຜນທີ່ກ່ອນ
+      alert("Please select a feature on the map first.");
       return;
     }
-
-    // Prompt user for buffer distance
-    // ຂໍໃຫ້ຜູ້ໃຊ້ໃສ່ໄລຍະຫ່າງຂອງ Buffer
     const bufferDistanceInput = prompt("Enter buffer distance in meters:");
     const bufferDistanceInMeters = parseFloat(bufferDistanceInput);
 
-    // Validate the input distance
-    // ກວດສອບຄວາມຖືກຕ້ອງຂອງໄລຍະຫ່າງທີ່ປ້ອນ
     if (isNaN(bufferDistanceInMeters) || bufferDistanceInMeters <= 0) {
-      alert("Invalid buffer distance. Please enter a positive number."); // Invalid input
-      // ໄລຍະຫ່າງຂອງ Buffer ບໍ່ຖືກຕ້ອງ. ກະລຸນາປ້ອນຕົວເລກບວກ
+      alert("Invalid buffer distance. Please enter a positive number.");
       return;
     }
 
-    const geometry = selectedFeature.getGeometry(); // Get the geometry of the selected feature
-    // ເອົາ Geometry ຂອງ Feature ທີ່ເລືອກ
+    const geometry = selectedFeature.getGeometry();
     let bufferPolygon;
-
-    vectorSource.current.clear(); // Clear any existing buffer features from the buffer layer
-    // ລຶບຄຸນສົມບັດ Buffer ທີ່ມີຢູ່ອອກຈາກ Layer Buffer
+    vectorSource.current.clear();
 
     if (geometry.getType() === "Point") {
-      // If the selected feature is a Point
-      // ຖ້າ Feature ທີ່ເລືອກເປັນ Point
-      const center = geometry.getCoordinates(); // Get the coordinates of the point
-      // ເອົາ Coordinates ຂອງ Point
       bufferPolygon = OlPolygon.circular(
-        // Create a circular polygon (buffer) around the point
-        // ສ້າງ Circular Polygon (Buffer) ອ້ອມຮອບ Point
-        mapInstance.getView().getProjection(), // Use the map's projection
-        // ໃຊ້ Map's Projection
-        center, // Center of the circle
-        // ຈຸດໃຈກາງຂອງວົງມົນ
-        bufferDistanceInMeters // Radius of the circle in meters
-        // ລັດສະໝີຂອງວົງມົນເປັນແມັດ
-      );
-    } else if (
-      // If the selected feature is a LineString or Polygon
-      // ຖ້າ Feature ທີ່ເລືອກເປັນ LineString ຫຼື Polygon
-      geometry.getType() === "LineString" ||
-      geometry.getType() === "Polygon"
-    ) {
-      const extent = geometry.getExtent(); // Get the bounding box extent of the geometry
-      // ເອົາ Bounding Box Extent ຂອງ Geometry
-      const center = [(extent[0] + extent[2]) / 2, (extent[1] + extent[3]) / 2]; // Calculate the center of the extent
-      // ຄິດໄລ່ຈຸດໃຈກາງຂອງ Extent
-
-      if (!containsCoordinate(mapInstance.getView().getExtent(), center)) {
-        // Fallback for cases where the extent center might be outside the current view (e.g., small features)
-        // Fallback ສໍາລັບກໍລະນີທີ່ຈຸດສູນກາງຂອງ Extent ອາດຈະຢູ່ພາຍນອກ View ປັດຈຸບັນ (ເຊັ່ນ: Features ຂະໜາດນ້ອຍ)
-        const geomCenter = geometry.getCoordinates();
-        const actualCenter =
-          geometry.getType() === "LineString"
-            ? geomCenter[0] // For LineString, use the first coordinate
-            : // ສໍາລັບ LineString, ໃຊ້ Coordinate ທໍາອິດ
-              geomCenter[0][0]; // For Polygon, use the first point of the first linear ring
-        // ສໍາລັບ Polygon, ໃຊ້ Point ທໍາອິດຂອງ Linear Ring ທໍາອິດ
-
-        bufferPolygon = OlPolygon.circular(
-          // Create a circular buffer around this more accurate center
-          // ສ້າງ Circular Buffer ອ້ອມຮອບຈຸດໃຈກາງທີ່ຊັດເຈນກວ່ານີ້
-          mapInstance.getView().getProjection(),
-          actualCenter,
-          bufferDistanceInMeters
-        );
-      } else {
-        bufferPolygon = OlPolygon.circular(
-          // Create a circular buffer around the calculated extent center
-          // ສ້າງ Circular Buffer ອ້ອມຮອບຈຸດໃຈກາງ Extent ທີ່ຄິດໄລ່ແລ້ວ
-          mapInstance.getView().getProjection(),
-          center,
-          bufferDistanceInMeters
-        );
-      }
+        geometry,
+        bufferDistanceInMeters,
+        64
+      ).transform("EPSG:4326", mapInstance.getView().getProjection());
     } else {
-      alert(
-        "Buffering is currently supported for Point, LineString, and Polygon features."
-      ); // Unsupported geometry type
-      // ປະຈຸບັນ Buffer ຮອງຮັບສະເພາະ Point, LineString, ແລະ Polygon Features ເທົ່ານັ້ນ
+      alert("Buffering is currently supported only for Point features.");
       return;
     }
 
-    const bufferFeature = new Feature(bufferPolygon); // Create a new feature from the buffer polygon
-    // ສ້າງ Feature ໃໝ່ຈາກ Buffer Polygon
-    vectorSource.current.addFeature(bufferFeature); // Add the buffer feature to the buffer layer's source
-    // ເພີ່ມ Buffer Feature ໃສ່ Source ຂອງ Layer Buffer
-  }, [mapInstance, selectedFeature]); // Dependencies: Re-run if mapInstance or selectedFeature changes
-  // Dependencies: ເຮັດວຽກຄືນໃໝ່ຖ້າ mapInstance ຫຼື selectedFeature ປ່ຽນແປງ
+    const bufferFeature = new Feature(bufferPolygon);
+    vectorSource.current.addFeature(bufferFeature);
+  }, [mapInstance, selectedFeature]);
 
-  // useEffect hook to handle updates to the selectedFeature state when a feature is selected on the map
-  // useEffect Hook ເພື່ອຈັດການການອັບເດດສະຖານະ selectedFeature ເມື່ອມີ Feature ຖືກເລືອກໃນແຜນທີ່
   useEffect(() => {
     if (mapInstance) {
-      // Find the Select interaction instance from the map's interactions
-      // ຊອກຫາ Instance ຂອງ Select Interaction ຈາກ Interactions ຂອງແຜນທີ່
       const select = mapInstance
         .getInteractions()
         .getArray()
-        .find(
-          (interaction) => interaction instanceof Select // Check if the interaction is an instance of ol/interaction/Select
-          // ກວດເບິ່ງວ່າ Interaction ເປັນ Instance ຂອງ Ol/Interaction/Select ຫຼືບໍ່
-        );
+        .find((interaction) => interaction instanceof Select);
 
       if (select) {
-        // Listen for 'select' events on the Select interaction
-        // ຟັງ Event 'select' ໃນ Select Interaction
         select.on("select", (event) => {
           if (event.selected.length > 0) {
-            // If features are selected, set the first one as selectedFeature
-            // ຖ້າເລືອກ Features, ໃຫ້ຕັ້ງ Feature ທຳອິດເປັນ selectedFeature
             setSelectedFeature(event.selected[0]);
           } else {
-            setSelectedFeature(null); // If no features are selected, clear selectedFeature
-            // ຖ້າບໍ່ມີ Features ຖືກເລືອກ, ໃຫ້ລຶບ selectedFeature
+            setSelectedFeature(null);
           }
         });
       }
     }
-  }, [mapInstance]); // Dependency: Re-run if mapInstance changes
-  // Dependency: ເຮັດວຽກຄືນໃໝ່ຖ້າ mapInstance ຫຼື selectedFeature ປ່ຽນແປງ
+  }, [mapInstance]);
+
+  const RibbonButton = ({ icon, label, toolName, onClick, isActive }) => {
+    const buttonIsActive = isActive || activeTool === toolName;
+    return (
+      <button
+        className={`ribbon-button ${buttonIsActive ? "active" : ""}`}
+        onClick={onClick || (() => handleToolClick(toolName))}
+        title={label}
+      >
+        {icon}
+        <span>{label}</span>
+      </button>
+    );
+  };
 
   return (
     <div className="ribbon-toolbar">
-      {/* Ribbon Tabs Section */}
-      {/* ສ່ວນແຖບ Ribbon */}
       <div className="ribbon-tabs">
-        <div
+        <button
           className={`ribbon-tab ${activeTab === "home" ? "active" : ""}`}
           onClick={() => handleTabClick("home")}
         >
           Home (ໜ້າຫຼັກ)
-        </div>
-        <div
+        </button>
+        <button
           className={`ribbon-tab ${activeTab === "map" ? "active" : ""}`}
           onClick={() => handleTabClick("map")}
         >
           Map (ແຜນທີ່)
-        </div>
-        <div
+        </button>
+        <button
           className={`ribbon-tab ${activeTab === "analysis" ? "active" : ""}`}
           onClick={() => handleTabClick("analysis")}
         >
           Analysis (ການວິເຄາະ)
-        </div>
+        </button>
       </div>
 
-      {/* Ribbon Content Section, displays content based on activeTab */}
-      {/* ສ່ວນເນື້ອໃນ Ribbon, ສະແດງເນື້ອໃນຕາມ ActiveTab */}
       <div className="ribbon-content">
-        {/* Home Tab Content */}
-        {/* ເນື້ອໃນແຖບ Home */}
         {activeTab === "home" && (
           <>
             <div className="ribbon-group">
               <div className="ribbon-buttons">
-                {/* Pan Tool Button */}
-                {/* ປຸ່ມເຄື່ອງມື Pan */}
-                <button
-                  className={`ribbon-button ${
-                    activeTool === "pan" ? "active" : ""
-                  }`}
-                  onClick={() => handleToolClick("pan")}
-                >
-                  <Hand size={18} />
-                  Pan (ເລື່ອນ)
-                </button>
-                {/* Select Tool Button */}
-                {/* ປຸ່ມເຄື່ອງມືເລືອກ */}
-                <button
-                  className={`ribbon-button ${
-                    activeTool === "select" ? "active" : ""
-                  }`}
-                  onClick={() => handleToolClick("select")}
-                >
-                  <MousePointer size={18} />
-                  Select (ເລືອກ)
-                </button>
-                {/* Clear Map Button */}
-                {/* ປຸ່ມລຶບແຜນທີ່ */}
-                <button className="ribbon-button" onClick={handleClearMap}>
-                  <Eraser size={18} />
-                  Clear Map (ລຶບແຜນທີ່)
-                </button>
+                <RibbonButton
+                  icon={<Hand size={18} />}
+                  label="Pan (ເລື່ອນ)"
+                  toolName="pan"
+                />
+                <RibbonButton
+                  icon={<MousePointer size={18} />}
+                  label="Select (ເລືອກ)"
+                  toolName="select"
+                />
+                <RibbonButton
+                  icon={<Eraser size={18} />}
+                  label="Clear Map (ລຶບແຜນທີ່)"
+                  onClick={handleClearMap}
+                />
               </div>
               <div className="ribbon-group-title">
                 Map Tools (ເຄື່ອງມືແຜນທີ່)
@@ -421,153 +248,102 @@ const RibbonToolbar = ({ activeTool, setActiveTool, mapInstance }) => {
             </div>
             <div className="ribbon-group">
               <div className="ribbon-buttons">
-                {/* Draw Point Button */}
-                {/* ປຸ່ມແຕ້ມຈຸດ */}
-                <button
-                  className={`ribbon-button ${
-                    activeTool === "draw-point" ? "active" : ""
-                  }`}
-                  onClick={() => handleToolClick("draw-point")}
-                >
-                  <MapPin size={18} />
-                  Point (ຈຸດ)
-                </button>
-                {/* Draw Line Button */}
-                {/* ປຸ່ມແຕ້ມເສັ້ນ */}
-                <button
-                  className={`ribbon-button ${
-                    activeTool === "draw-line" ? "active" : ""
-                  }`}
-                  onClick={() => handleToolClick("draw-line")}
-                >
-                  <PenLine size={18} />
-                  Line (ເສັ້ນ)
-                </button>
-                {/* Draw Polygon Button */}
-                {/* ປຸ່ມແຕ້ມ Polygon */}
-                <button
-                  className={`ribbon-button ${
-                    activeTool === "draw-polygon" ? "active" : ""
-                  }`}
-                  onClick={() => handleToolClick("draw-polygon")}
-                >
-                  <Hexagon size={18} />
-                  Polygon (ຮູບຫຼາຍຫຼ່ຽມ)
-                </button>
-                {/* Draw Circle Button */}
-                {/* ປຸ່ມແຕ້ມວົງມົນ */}
-                <button
-                  className={`ribbon-button ${
-                    activeTool === "draw-circle" ? "active" : ""
-                  }`}
-                  onClick={() => handleToolClick("draw-circle")}
-                >
-                  <Circle size={18} />
-                  Circle (ວົງມົນ)
-                </button>
+                <RibbonButton
+                  icon={<MapPin size={18} />}
+                  label="Point (ຈຸດ)"
+                  toolName="draw-point"
+                />
+                <RibbonButton
+                  icon={<PenLine size={18} />}
+                  label="Line (ເສັ້ນ)"
+                  toolName="draw-line"
+                />
+                <RibbonButton
+                  icon={<Hexagon size={18} />}
+                  label="Polygon (ຮູບຫຼາຍຫຼ່ຽມ)"
+                  toolName="draw-polygon"
+                />
+                <RibbonButton
+                  icon={<Circle size={18} />}
+                  label="Circle (ວົງມົນ)"
+                  toolName="draw-circle"
+                />
               </div>
               <div className="ribbon-group-title">Draw (ແຕ້ມ)</div>
             </div>
             <div className="ribbon-group">
               <div className="ribbon-buttons">
-                {/* Measure Distance Button */}
-                {/* ປຸ່ມວັດແທກໄລຍະທາງ */}
-                <button
-                  className={`ribbon-button ${
-                    activeTool === "measure-distance" ? "active" : ""
-                  }`}
-                  onClick={() => handleToolClick("measure-distance")}
-                >
-                  <Ruler size={18} />
-                  Distance (ໄລຍະທາງ)
-                </button>
-                {/* Measure Area Button */}
-                {/* ປຸ່ມວັດແທກພື້ນທີ່ */}
-                <button
-                  className={`ribbon-button ${
-                    activeTool === "measure-area" ? "active" : ""
-                  }`}
-                  onClick={() => handleToolClick("measure-area")}
-                >
-                  <LandPlot size={18} />
-                  Area (ພື້ນທີ່)
-                </button>
-                {/* Identify Tool Button */}
-                {/* ປຸ່ມເຄື່ອງມື Identify */}
-                <button
-                  className={`ribbon-button ${
-                    activeTool === "identify" ? "active" : ""
-                  }`}
-                  onClick={() => handleToolClick("identify")}
-                >
-                  <Info size={18} />
-                  Identify (ລະບຸ)
-                </button>
+                <RibbonButton
+                  icon={<Ruler size={18} />}
+                  label="Distance (ໄລຍະທາງ)"
+                  toolName="measure-distance"
+                />
+                <RibbonButton
+                  icon={<LandPlot size={18} />}
+                  label="Area (ພື້ນທີ່)"
+                  toolName="measure-area"
+                />
+                <RibbonButton
+                  icon={<Info size={18} />}
+                  label="Identify (ລະບຸ)"
+                  toolName="identify"
+                />
               </div>
               <div className="ribbon-group-title">Measure (ວັດແທກ)</div>
             </div>
           </>
         )}
 
-        {/* Map Tab Content */}
-        {/* ເນື້ອໃນແຖບ Map */}
         {activeTab === "map" && (
           <>
             <div className="ribbon-group">
               <div className="ribbon-buttons">
-                {/* Zoom In Button */}
-                {/* ປຸ່ມຊູມເຂົ້າ */}
-                <button className="ribbon-button" onClick={handleZoomIn}>
-                  <ZoomIn size={18} />
-                  Zoom In (ຊູມເຂົ້າ)
-                </button>
-                {/* Zoom Out Button */}
-                {/* ປຸ່ມຊູມອອກ */}
-                <button className="ribbon-button" onClick={handleZoomOut}>
-                  <ZoomOut size={18} />
-                  Zoom Out (ຊູມອອກ)
-                </button>
-                {/* Zoom to Layer Button */}
-                {/* ປຸ່ມຊູມໄປທີ່ Layer */}
-                <button className="ribbon-button" onClick={handleZoomToLayer}>
-                  <ScanSearch size={18} />
-                  Zoom to Layer (ຊູມໄປທີ່ Layer)
-                </button>
-                {/* Full Extent Button */}
-                {/* ປຸ່ມຂອບເຂດເຕັມ */}
-                <button className="ribbon-button" onClick={handleFullExtent}>
-                  <Fullscreen size={18} />
-                  Full Extent (ຂອບເຂດເຕັມ)
-                </button>
+                <RibbonButton
+                  icon={<ZoomIn size={18} />}
+                  label="Zoom In (ຊູມເຂົ້າ)"
+                  onClick={handleZoomIn}
+                />
+                <RibbonButton
+                  icon={<ZoomOut size={18} />}
+                  label="Zoom Out (ຊູມອອກ)"
+                  onClick={handleZoomOut}
+                />
+                <RibbonButton
+                  icon={<ScanSearch size={18} />}
+                  label="Zoom to Layer (ຊູມໄປທີ່ Layer)"
+                  onClick={handleZoomToLayer}
+                />
+                <RibbonButton
+                  icon={<Fullscreen size={18} />}
+                  label="Full Extent (ຂອບເຂດເຕັມ)"
+                  onClick={handleFullExtent}
+                />
               </div>
               <div className="ribbon-group-title">Navigation (ການນຳທາງ)</div>
             </div>
             <div className="ribbon-group">
               <div className="ribbon-buttons">
-                {/* Zoom In Button */}
-                {/* ປຸ່ມຊູມເຂົ້າ */}
-                <button className="ribbon-button" onClick={handleZoomIn}>
-                  <Layers size={18} />
-                  Open Layers (ເປີດຊັ້ນຂໍ້ມູນ)
-                </button>
+                <RibbonButton
+                  icon={<Layers size={18} />}
+                  label="Layers Panel"
+                  isActive={isPanelVisible}
+                  onClick={() => setIsPanelVisible((prev) => !prev)}
+                />
               </div>
-              <div className="ribbon-group-title">Navigation (ການນຳທາງ)</div>
+              <div className="ribbon-group-title">View</div>
             </div>
           </>
         )}
 
-        {/* Analysis Tab Content */}
-        {/* ເນື້ອໃນແຖບການວິເຄາະ */}
         {activeTab === "analysis" && (
           <>
             <div className="ribbon-group">
               <div className="ribbon-buttons">
-                {/* Buffer Button */}
-                {/* ປຸ່ມ Buffer */}
-                <button className="ribbon-button" onClick={handleBuffer}>
-                  <Target size={18} />
-                  Buffer (ເຂດກັນຊົນ)
-                </button>
+                <RibbonButton
+                  icon={<Target size={18} />}
+                  label="Buffer (ເຂດກັນຊົນ)"
+                  onClick={handleBuffer}
+                />
               </div>
               <div className="ribbon-group-title">
                 Geoprocessing (ການປະມວນຜົນພູມສາດ)

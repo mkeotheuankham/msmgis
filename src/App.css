@@ -2,7 +2,7 @@
   /* Color Palette */
   --color-dark-background: #1a1a1a;
   --color-dark-surface: rgba(30, 30, 30, 0.9);
-  --color-dark-surface-alt: rgba(35, 35, 35, 0.85);
+  --color-dark-surface-alt: #252526;
   --color-dark-border: rgba(60, 60, 60, 0.8);
   --color-dark-border-light: rgba(70, 70, 70, 0.8);
   --color-text-light: #e0e0e0;
@@ -41,385 +41,218 @@
 }
 
 * {
-  /* Reset default margin and padding for all elements */
-  /* ລຶບ Margin ແລະ Padding ເລີ່ມຕົ້ນສຳລັບທຸກ Elements */
   margin: 0;
   padding: 0;
-  /* Ensure padding and border are included in the element's total width and height */
-  /* ໃຫ້ແນ່ໃຈວ່າ Padding ແລະ Border ຖືກລວມເຂົ້າໃນຄວາມກວ້າງ ແລະ ຄວາມສູງທັງໝົດຂອງ Element */
   box-sizing: border-box;
 }
 
 body {
-  /* Define the font family for the entire document */
-  /* ກຳນົດ Font Family ສໍາລັບເອກະສານທັງໝົດ */
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  /* Set a dark background color for the body */
-  /* ຕັ້ງຄ່າສີພື້ນຫຼັງສີເຂັ້ມສຳລັບ Body */
   background: var(--color-dark-background);
-  /* Hide any overflowing content, preventing scrollbars on the body */
-  /* ເຊື່ອງເນື້ອຫາທີ່ລົ້ນ, ປ້ອງກັນແຖບເລື່ອນໃນ Body */
   overflow: hidden;
   color: var(--color-text-light);
 }
 
 .app-container {
-  /* Make the container fill the entire viewport height */
-  /* ເຮັດໃຫ້ Container ເຕັມຄວາມສູງຂອງ Viewport ທັງໝົດ */
   height: 100vh;
-  /* Use flexbox for layout */
-  /* ໃຊ້ Flexbox ສຳລັບ Layout */
   display: flex;
-  /* Arrange children in a vertical column */
-  /* ຈັດຮຽງລູກໃນແນວຕັ້ງເປັນ Column */
   flex-direction: column;
+}
+
+/* Main content layout */
+.main-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative; /* Set positioning context for the absolute panel */
+}
+
+/* Panel styles for slide-over effect */
+.panel {
+  position: absolute; /* Position over the map */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 280px;
+  background: rgba(37, 37, 38, 0.9); /* Slightly transparent background */
+  backdrop-filter: blur(5px); /* Frosted glass effect */
+  border-left: 1px solid var(--color-dark-border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md);
+  z-index: 10; /* Ensure panel is above the map */
+
+  /* Animation setup */
+  transform: translateX(100%); /* Start hidden off-screen to the right */
+  transition: transform 0.3s ease-in-out;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+}
+
+.panel.visible {
+  transform: translateX(0); /* Slide into view */
+}
+
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.panel-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-accent-blue);
+  border-bottom: 1px solid var(--color-dark-border);
+  padding-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
 }
 
 /* Ribbon Toolbar */
 .ribbon-toolbar {
-  /* Apply a dark, semi-transparent background */
-  /* ໃຊ້ Background ສີເຂັ້ມ, ເຄິ່ງໂປ່ງໃສ */
   background: var(--color-dark-surface);
-  /* Add a subtle dark border at the bottom */
-  /* ເພີ່ມ Border ສີເຂັ້ມແບບຈືດໆຢູ່ດ້ານລຸ່ມ */
   border-bottom: 1px solid var(--color-dark-border);
-  /* Add internal spacing */
-  /* ເພີ່ມໄລຍະຫ່າງພາຍໃນ */
   padding: var(--spacing-sm) var(--spacing-md);
-  /* Apply a subtle dark shadow for depth */
-  /* ໃຊ້ Shadow ສີເຂັ້ມແບບຈືດໆເພື່ອຄວາມເລິກ */
   box-shadow: 0 2px var(--spacing-sm) var(--color-shadow);
+  z-index: 20; /* Ensure ribbon is above panel */
+  position: relative;
 }
 
 .ribbon-tabs {
-  /* Use flexbox to arrange tabs horizontally */
-  /* ໃຊ້ Flexbox ເພື່ອຈັດຮຽງແຖບຕາມແນວນອນ */
   display: flex;
-  /* No gap between tabs */
-  /* ບໍ່ມີຊ່ອງຫວ່າງລະຫວ່າງແຖບ */
   gap: 0;
-  /* Add margin below the tabs */
-  /* ເພີ່ມ Margin ຢູ່ລຸ່ມແຖບ */
   margin-bottom: var(--spacing-sm);
 }
 
 .ribbon-tab {
-  /* Add internal spacing for tab content */
-  /* ເພີ່ມໄລຍະຫ່າງພາຍໃນສຳລັບເນື້ອໃນແຖບ */
   padding: 6px var(--spacing-lg);
-  /* Set a dark, semi-transparent background for inactive tabs */
-  /* ຕັ້ງຄ່າສີພື້ນຫຼັງສີເຂັ້ມ, ເຄິ່ງໂປ່ງໃສສຳລັບແຖບທີ່ບໍ່ມີການເຄື່ອນໄຫວ */
   background: rgba(40, 40, 40, 0.7);
-  /* Apply a subtle dark border */
-  /* ໃຊ້ Border ສີເຂັ້ມແບບຈືດໆ */
   border: 1px solid var(--color-dark-border-light);
-  /* Remove the bottom border, as it's handled by .ribbon-content */
-  /* ລຶບ Border ລຸ່ມອອກ, ເນື່ອງຈາກມັນຖືກຈັດການໂດຍ .ribbon-content */
   border-bottom: none;
-  /* Change cursor to pointer on hover to indicate clickability */
-  /* ປ່ຽນ Cursor ເປັນ Pointer ເມື່ອ Hover ເພື່ອສະແດງວ່າສາມາດຄລິກໄດ້ */
   cursor: pointer;
-  /* Set font size */
-  /* ຕັ້ງຄ່າ Font Size */
   font-size: var(--font-size-md);
-  /* Set text color to light gray */
-  /* ຕັ້ງຄ່າສີຂໍ້ຄວາມເປັນສີເທົາອ່ອນ */
   color: var(--color-text-muted);
-  /* Smooth transition for all properties on state changes */
-  /* ປ່ຽນຜ່ານຢ່າງລຽບງ່າຍສຳລັບຄຸນສົມບັດທັງໝົດໃນການປ່ຽນແປງສະຖານະ */
   transition: all var(--transition-speed);
 }
 
 .ribbon-tab:first-child {
-  /* Apply a border-radius to the top-left corner of the first tab */
-  /* ໃຊ້ Border-Radius ກັບມູມຊ້າຍເທິງຂອງແຖບທໍາອິດ */
   border-top-left-radius: var(--border-radius-md);
 }
 
 .ribbon-tab:last-child {
-  /* Apply a border-radius to the top-right corner of the last tab */
-  /* ໃຊ້ Border-Radius ກັບມູມຂວາເທິງຂອງແຖບສຸດທ້າຍ */
   border-top-right-radius: var(--border-radius-md);
 }
 
 .ribbon-tab.active {
-  /* Apply a slightly lighter dark background for the active tab */
-  /* ໃຊ້ Background ສີເຂັ້ມທີ່ອ່ອນກວ່າເລັກນ້ອຍສຳລັບແຖບທີ່ເຄື່ອນໄຫວ */
   background: rgba(50, 50, 50, 0.9);
-  /* Lighter text color for the active tab */
-  /* ສີຂໍ້ຄວາມທີ່ສະຫວ່າງກວ່າສຳລັບແຖບທີ່ເຄື່ອນໄຫວ */
   color: var(--color-text-active);
-  /* Change the bottom border to blend with the content area */
-  /* ປ່ຽນ Border ລຸ່ມເພື່ອປະສານກັບພື້ນທີ່ເນື້ອຫາ */
   border-bottom: 1px solid rgba(50, 50, 50, 0.9);
-  /* Adjust margin to visually overlap the bottom border */
-  /* ປັບ Margin ເພື່ອຊ້ອນທັບ Border ລຸ່ມ */
   margin-bottom: -1px;
 }
 
 .ribbon-content {
-  /* Use flexbox to arrange groups horizontally */
-  /* ໃຊ້ Flexbox ເພື່ອຈັດຮຽງກຸ່ມຕາມແນວນອນ */
   display: flex;
-  /* Add a gap between ribbon groups */
-  /* ເພີ່ມຊ່ອງຫວ່າງລະຫວ່າງກຸ່ມ Ribbon */
   gap: var(--spacing-xl);
-  /* Add padding above and below the content */
-  /* ເພີ່ມ Padding ເທິງ ແລະ ລຸ່ມເນື້ອຫາ */
   padding: var(--spacing-sm) 0;
-  /* Set a minimum height for the content area */
-  /* ຕັ້ງຄ່າຄວາມສູງຂັ້ນຕ່ຳສຳລັບພື້ນທີ່ເນື້ອຫາ */
   min-height: 80px;
-  /* Add a subtle dark top border to separate from tabs */
-  /* ເພີ່ມ Top Border ສີເຂັ້ມແບບຈືດໆເພື່ອແຍກຈາກແຖບຕ່າງໆ */
   border-top: 1px solid var(--color-dark-border);
-  /* Dark background for content area */
-  /* Background ສີເຂັ້ມສຳລັບພື້ນທີ່ເນື້ອຫາ */
   background: var(--color-dark-surface-alt);
-  box-shadow: inset 0 1px var(--spacing-xs) var(--color-inner-shadow); /* Inner shadow for depth */
+  box-shadow: inset 0 1px var(--spacing-xs) var(--color-inner-shadow);
 }
 
 .ribbon-group {
-  /* Use flexbox to arrange buttons vertically within a group */
-  /* ໃຊ້ Flexbox ເພື່ອຈັດຮຽງປຸ່ມຕ່າງໆຕາມແນວຕັ້ງພາຍໃນກຸ່ມ */
   display: flex;
   flex-direction: column;
-  /* Add a gap between elements within the group */
-  /* ເພີ່ມຊ່ອງຫວ່າງລະຫວ່າງ Elements ພາຍໃນກຸ່ມ */
   gap: var(--spacing-xs);
-  /* Add horizontal padding for group content */
-  /* ເພີ່ມ Horizontal Padding ສໍາລັບເນື້ອໃນກຸ່ມ */
   padding: 0 var(--spacing-md);
-  /* Add a subtle dark right border to separate groups */
-  /* ເພີ່ມ Right Border ສີເຂັ້ມແບບຈືດໆເພື່ອແຍກກຸ່ມຕ່າງໆ */
   border-right: 1px solid rgba(70, 70, 70, 0.7);
-  /* Set a minimum width for each group */
-  /* ຕັ້ງຄ່າຄວາມກວ້າງຂັ້ນຕ່ຳສຳລັບແຕ່ລະກຸ່ມ */
   min-width: 80px;
 }
 
 .ribbon-group:last-child {
-  /* Remove the right border for the last group to avoid unnecessary lines */
-  /* ລຶບ Right Border ສໍາລັບກຸ່ມສຸດທ້າຍເພື່ອຫຼີກເວັ້ນເສັ້ນທີ່ບໍ່ຈໍາເປັນ */
   border-right: none;
 }
 
 .ribbon-group-title {
-  /* Smaller font size for group titles */
-  /* Font Size ນ້ອຍລົງສຳລັບ Group Titles */
   font-size: var(--font-size-xs);
-  /* Lighter gray text color for contrast */
-  /* ສີຂໍ້ຄວາມສີເທົາທີ່ສະຫວ່າງກວ່າເພື່ອຄວາມຄົມຊັດ */
   color: var(--color-text-darker-muted);
-  /* Center align the group title text */
-  /* ຈັດຕຳແໜ່ງຂໍ້ຄວາມ Title ຂອງກຸ່ມຢູ່ກາງ */
   text-align: center;
-  /* Add top margin */
-  /* ເພີ່ມ Top Margin */
   margin-top: var(--spacing-xs);
 }
 
 .ribbon-buttons {
-  /* Use flexbox to arrange buttons */
-  /* ໃຊ້ Flexbox ເພື່ອຈັດຮຽງປຸ່ມຕ່າງໆ */
   display: flex;
-  /* Add a small gap between buttons */
-  /* ເພີ່ມຊ່ອງຫວ່າງນ້ອຍໆລະຫວ່າງປຸ່ມຕ່າງໆ */
   gap: var(--spacing-xs);
-  /* Allow buttons to wrap to the next line if space is limited */
-  /* ອະນຸຍາດໃຫ້ປຸ່ມຕ່າງໆຫໍ່ໄປຫາແຖວຕໍ່ໄປ ຖ້າພື້ນທີ່ຈຳກັດ */
   flex-wrap: wrap;
-  /* Center align buttons within the group */
-  /* ຈັດຕຳແໜ່ງປຸ່ມຕ່າງໆຢູ່ກາງພາຍໃນກຸ່ມ */
   justify-content: center;
 }
 
 .ribbon-button {
-  /* Use flexbox to arrange icon and text vertically within the button */
-  /* ໃຊ້ Flexbox ເພື່ອຈັດຮຽງ Icon ແລະ Text ຕາມແນວຕັ້ງພາຍໃນປຸ່ມ */
   display: flex;
   flex-direction: column;
-  /* Center align items horizontally */
-  /* ຈັດຕຳແໜ່ງ Items ຕາມແນວນອນ */
   align-items: center;
-  /* Add internal padding */
-  /* ເພີ່ມ Internal Padding */
   padding: 6px var(--spacing-sm);
-  /* Apply a dark, semi-transparent background */
-  /* ໃຊ້ Gradient Background ສີເຂັ້ມ, ເຄິ່ງໂປ່ງໃສ */
   background: rgba(50, 50, 50, 0.6);
-  /* Add a subtle dark border */
-  /* ເພີ່ມ Border ສີເຂັ້ມແບບຈືດໆ */
   border: 1px solid rgba(80, 80, 80, 0.7);
-  /* Apply border-radius for rounded corners */
-  /* ໃຊ້ Border-Radius ສໍາລັບມູມມົນ */
   border-radius: var(--border-radius-sm);
-  /* Change cursor to pointer on hover */
-  /* ປ່ຽນ Cursor ເປັນ Pointer ເມື່ອ Hover */
   cursor: pointer;
-  /* Set font size */
-  /* ຕັ້ງຄ່າ Font Size */
   font-size: var(--font-size-xs);
-  /* Set text color to light gray */
-  /* ຕັ້ງຄ່າສີຂໍ້ຄວາມເປັນສີເທົາອ່ອນ */
   color: var(--color-text-muted);
-  /* Smooth transition for all properties on state changes */
-  /* ປ່ຽນຜ່ານຢ່າງລຽບງ່າຍສຳລັບຄຸນສົມບັດທັງໝົດໃນການປ່ຽນແປງສະຖານະ */
   transition: all var(--transition-speed) var(--transition-ease);
-  /* Set minimum width and height for consistent button size */
-  /* ຕັ້ງຄ່າຄວາມກວ້າງ ແລະ ຄວາມສູງຂັ້ນຕ່ຳສຳລັບຂະໜາດປຸ່ມທີ່ສອດຄ່ອງກັນ */
   min-width: 32px;
   min-height: 32px;
 }
 
 .ribbon-button:hover {
-  /* Change background and border color on hover for visual feedback */
-  /* ປ່ຽນ Background ແລະ Border Color ເມື່ອ Hover ເພື່ອສະແດງການຕອບສະໜອງທາງສາຍຕາ */
   background: rgba(70, 70, 70, 0.8);
-  border-color: var(--color-accent-blue); /* Brighter blue for hover feedback */
-  color: var(--color-text-active); /* Brighter text on hover */
+  border-color: var(--color-accent-blue);
+  color: var(--color-text-active);
 }
 
 .ribbon-button.active {
-  /* Apply a brighter blue gradient background for active buttons */
-  /* ໃຊ້ Blue Gradient Background ທີ່ສະຫວ່າງກວ່າສຳລັບປຸ່ມທີ່ເຄື່ອນໄຫວ */
   background: linear-gradient(
     to bottom,
     var(--color-active-button-gradient-start),
     var(--color-active-button-gradient-end)
   );
-  /* Darker blue border color */
-  /* ສີຟ້າເຂັ້ມຂຶ້ນ */
   border-color: var(--color-accent-blue-dark);
-  /* White text color for active buttons */
-  /* ສີຂໍ້ຄວາມສີຂາວສໍາລັບປຸ່ມທີ່ເຄື່ອນໄຫວ */
   color: var(--color-text-active);
-  box-shadow: inset 0 1px var(--border-radius-sm) rgba(0, 0, 0, 0.3); /* Inner shadow for active state */
+  box-shadow: inset 0 1px var(--border-radius-sm) rgba(0, 0, 0, 0.3);
 }
 
-/* Icons within buttons */
+.ribbon-button span {
+  margin-top: 4px;
+}
+
 .ribbon-button-icon {
-  /* Set width and height for SVG icons */
-  /* ຕັ້ງຄ່າຄວາມກວ້າງ ແລະ ຄວາມສູງສຳລັບ SVG Icons */
   width: var(--spacing-lg);
   height: var(--spacing-lg);
-  /* Add a small margin below the icon */
-  /* ເພີ່ມ Margin ນ້ອຍໆຢູ່ລຸ່ມ Icon */
   margin-bottom: var(--spacing-xxs);
-  /* Make the SVG icon inherit the text color of its parent */
-  /* ເຮັດໃຫ້ SVG Icon ສືບທອດສີຂໍ້ຄວາມຂອງ Parent */
   fill: currentColor;
-  /* Smooth transition for icon color */
-  /* ປ່ຽນຜ່ານຢ່າງລຽບງ່າຍສຳລັບສີຂອງໄອຄອນ */
   transition: fill var(--transition-speed);
 }
 
 /* Map Container */
 .map-container {
-  /* Allow the map container to take up available vertical space */
-  /* ອະນຸຍາດໃຫ້ Map Container ໃຊ້ພື້ນທີ່ແນວຕັ້ງທີ່ມີຢູ່ */
-  flex: 1;
-  /* Set position to relative for absolute positioning of child elements (e.g., tooltips) */
-  /* ຕັ້ງຄ່າ Position ເປັນ Relative ສໍາລັບ Absolute Positioning ຂອງ Child Elements (ເຊັ່ນ: Tooltips) */
+  width: 100%;
+  height: 100%;
   position: relative;
-  /* Hide any content that overflows the container */
-  /* ເຊື່ອງເນື້ອຫາໃດໆທີ່ລົ້ນ Container */
   overflow: hidden;
 }
 
 #map {
-  /* Make the map fill the entire width and height of its container */
-  /* ເຮັດໃຫ້ແຜນທີ່ເຕັມຄວາມກວ້າງ ແລະ ຄວາມສູງທັງໝົດຂອງ Container */
   width: 100%;
   height: 100%;
-  /* Dark background for the map in case base layers aren't loaded */
-  /* Background ສີເຂັ້ມສຳລັບແຜນທີ່ໃນກໍລະນີທີ່ Base Layers ຍັງບໍ່ໂຫຼດ */
   background-color: #222;
 }
 
-/* Tab Content */
-.tab-content {
-  /* Hide tab content by default */
-  /* ເຊື່ອງເນື້ອໃນແຖບໂດຍຄ່າເລີ່ມຕົ້ນ */
-  display: none;
-}
-
-.tab-content.active {
-  /* Display active tab content as a flex container */
-  /* ສະແດງເນື້ອໃນແຖບທີ່ເຄື່ອນໄຫວເປັນ Flex Container */
-  display: flex;
-}
-
-.tooltip {
-  /* Position the tooltip relative to its normal position */
-  /* ວາງຕໍາແໜ່ງ Tooltip ທຽບກັບຕໍາແໜ່ງປົກກະຕິ */
-  position: relative;
-  /* Dark semi-transparent background - already good, slight adjustment for consistency */
-  /* Background ສີດຳເຄິ່ງໂປ່ງໃສ - ດີຢູ່ແລ້ວ, ປັບເລັກນ້ອຍເພື່ອຄວາມສອດຄ່ອງ */
-  background: var(--color-overlay-background);
-  /* Rounded corners */
-  /* ມູມມົນ */
-  border-radius: var(--border-radius-md);
-  /* White text color - already good */
-  /* ສີຂໍ້ຄວາມສີຂາວ - ດີຢູ່ແລ້ວ */
-  color: var(--color-text-active);
-  /* Internal padding */
-  /* Internal Padding */
-  padding: var(--spacing-xs) var(--spacing-sm);
-  /* Semi-transparent */
-  /* ເຄິ່ງໂປ່ງໃສ */
-  opacity: 0.9;
-  /* Prevent text from wrapping */
-  /* ປ້ອງກັນຂໍ້ຄວາມບໍ່ໃຫ້ຫໍ່ */
-  white-space: nowrap;
-  /* Font size */
-  /* Font Size */
-  font-size: var(--font-size-md);
-  /* Make the tooltip non-interactive to mouse events */
-  /* ເຮັດໃຫ້ Tooltip ບໍ່ມີການໂຕ້ຕອບກັບ Mouse Events */
-  pointer-events: none;
-  /* Add subtle shadow */
-  /* ເພີ່ມ Shadow ແບບຈືດໆ */
-  box-shadow: 0 2px 5px var(--color-shadow);
-}
-
-.tooltip:before {
-  /* Create an arrow-like shape below the tooltip */
-  /* ສ້າງຮູບຊົງລູກສອນຢູ່ລຸ່ມ Tooltip */
-  content: "";
-  /* Position absolutely relative to the tooltip */
-  /* ວາງຕໍາແໜ່ງຢ່າງແທ້ຈິງທຽບກັບ Tooltip */
-  position: absolute;
-  /* Place at the bottom of the tooltip */
-  /* ວາງໄວ້ຢູ່ລຸ່ມສຸດຂອງ Tooltip */
-  top: 100%;
-  /* Center horizontally */
-  /* ຈັດຕຳແໜ່ງຢູ່ກາງຕາມແນວນອນ */
-  left: 50%;
-  /* Adjust left margin to fine-tune centering */
-  /* ປັບ Left Margin ເພື່ອປັບຕໍາແໜ່ງຢູ່ກາງໃຫ້ລະອຽດ */
-  margin-left: -5px;
-  /* Create a triangle shape using borders */
-  /* ສ້າງຮູບສາມຫຼ່ຽມໂດຍໃຊ້ Borders */
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 5px solid var(--color-overlay-background); /* Match tooltip background */
-}
-
+/* Other styles... */
 .ol-zoom {
-  /* Hide the default OpenLayers zoom controls */
-  /* ເຊື່ອງ Default OpenLayers Zoom Controls */
   display: none;
 }
 
 .ol-attribution {
-  /* Adjust the position of the OpenLayers attribution control */
-  /* ປັບຕຳແໜ່ງຂອງ OpenLayers Attribution Control */
   bottom: 25px;
-  /* Adjust for dark theme */
-  /* ປັບສຳລັບ Dark Theme */
   color: var(--color-text-muted);
   background: rgba(30, 30, 30, 0.6);
   border-top-left-radius: var(--border-radius-md);
@@ -427,17 +260,28 @@ body {
   box-shadow: 0 -2px 5px var(--color-shadow);
 }
 
-/* Adding styles for the OpenLayers zoom buttons if they were to be custom */
-.ol-zoom-extent {
-  /* If you create custom zoom buttons, style them for dark theme */
-  background-color: rgba(40, 40, 40, 0.7);
-  color: var(--color-text-light);
-  border: 1px solid rgba(70, 70, 70, 0.8);
+.tooltip {
+  position: relative;
+  background: var(--color-overlay-background);
   border-radius: var(--border-radius-md);
+  color: var(--color-text-active);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  opacity: 0.9;
+  white-space: nowrap;
+  font-size: var(--font-size-md);
+  pointer-events: none;
   box-shadow: 0 2px 5px var(--color-shadow);
 }
 
-.ol-zoom-extent:hover {
-  background-color: rgba(70, 70, 70, 0.9);
-  border-color: var(--color-accent-blue);
+.tooltip:before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid var(--color-overlay-background);
 }
