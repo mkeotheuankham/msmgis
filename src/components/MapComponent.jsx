@@ -1,98 +1,110 @@
 import React, { useEffect, useRef } from "react";
-import "ol/ol.css"; // Essential for OpenLayers styles
+import "ol/ol.css";
 import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
 import XYZ from "ol/source/XYZ";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
-import Style from "ol/style/Style";
-import Fill from "ol/style/Fill";
-import Stroke from "ol/style/Stroke";
-import CircleStyle from "ol/style/Circle";
-import { fromLonLat, toLonLat, transform, METERS_PER_UNIT } from "ol/proj";
+import {
+  fromLonLat,
+  toLonLat,
+  transform,
+  METERS_PER_UNIT,
+  get as getProjection,
+} from "ol/proj";
 import { getCenter } from "ol/extent";
 import Point from "ol/geom/Point";
 import LineString from "ol/geom/LineString";
 import Feature from "ol/Feature";
 import Draw from "ol/interaction/Draw";
-import { getLength, getArea } from "ol/sphere";
+import Modify from "ol/interaction/Modify";
 import Select from "ol/interaction/Select";
+import { click } from "ol/events/condition";
 import Graticule from "ol/layer/Graticule";
+import Style from "ol/style/Style";
+import Fill from "ol/style/Fill";
+import Stroke from "ol/style/Stroke";
 import Text from "ol/style/Text";
-
-// --- For UTM Conversion ---
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
+import TileWMS from "ol/source/TileWMS";
 
 // --- Register UTM projections for Laos (Zones 47N and 48N) ---
 proj4.defs("EPSG:32647", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs");
 proj4.defs("EPSG:32648", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
 register(proj4);
-// --- End UTM Setup ---
 
 const MapComponent = ({
   activeTool,
-  setActiveTool,
   setMapInstance,
   graticuleEnabled,
   graticuleType,
+  isHistoricalLayerActive,
+  selectedDate,
 }) => {
   const mapRef = useRef();
   const olMap = useRef(null);
-  const drawInteraction = useRef(null);
-  const selectInteraction = useRef(null);
+  const drawInteractionRef = useRef(null);
+  const modifyInteractionRef = useRef(null);
+  const selectInteractionRef = useRef(null);
+  const vectorLayerRef = useRef(null);
   const graticuleLayer = useRef(null);
   const utmLabelSource = useRef(new VectorSource());
-  const utmGridLineSource = useRef(new VectorSource()); // Source for custom grid lines
+  const utmGridLineSource = useRef(new VectorSource());
 
-  // --- Initial Setup Effect ---
+  // --- Initial Map Setup ---
   useEffect(() => {
-    // --- Base Map Layers ---
-    const osmLayer = new TileLayer({
-      source: new XYZ({
-        url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    const baseLayers = [
+      new TileLayer({
+        source: new XYZ({
+          url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        }),
+        name: "osm",
+        visible: true,
       }),
-      name: "osm",
-      visible: true,
-    });
-    const esriSatelliteLayer = new TileLayer({
-      source: new XYZ({
-        url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      new TileLayer({
+        source: new XYZ({
+          url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        }),
+        name: "satellite",
+        visible: false,
       }),
-      name: "satellite",
-      visible: false,
-    });
-    const topoLayer = new TileLayer({
-      source: new XYZ({
-        url: "https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png",
+      new TileLayer({
+        source: new XYZ({
+          url: "https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        }),
+        name: "topo",
+        visible: false,
       }),
-      name: "topo",
-      visible: false,
-    });
-    const googleSatelliteLayer = new TileLayer({
-      source: new XYZ({
-        url: "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}",
+      new TileLayer({
+        source: new XYZ({
+          url: "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}",
+        }),
+        name: "googleSatellite",
+        visible: false,
       }),
-      name: "googleSatellite",
-      visible: false,
-    });
-    const googleHybridLayer = new TileLayer({
-      source: new XYZ({
-        url: "https://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}",
+      new TileLayer({
+        source: new XYZ({
+          url: "https://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}",
+        }),
+        name: "googleHybrid",
+        visible: false,
       }),
-      name: "googleHybrid",
-      visible: false,
-    });
-    const cartoLayer = new TileLayer({
-      source: new XYZ({
-        url: "https://{a-d}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
+      new TileLayer({
+        source: new XYZ({
+          url: "https://{a-d}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
+        }),
+        name: "carto",
+        visible: false,
       }),
-      name: "carto",
-      visible: false,
+    ];
+
+    vectorLayerRef.current = new VectorLayer({
+      source: new VectorSource(),
+      name: "editorLayer",
     });
 
-    // --- Vector & Label Layers ---
     const utmLabelLayer = new VectorLayer({
       source: utmLabelSource.current,
       style: (feature) => feature.get("style"),
@@ -111,48 +123,19 @@ const MapComponent = ({
       name: "utmGridLineLayer",
       zIndex: 998,
     });
-    const mainVectorLayer = new VectorLayer({
-      source: new VectorSource(),
-      style: new Style({
-        fill: new Fill({ color: "rgba(255, 255, 255, 0.2)" }),
-        stroke: new Stroke({ color: "#ffcc33", width: 2 }),
-        image: new CircleStyle({
-          radius: 7,
-          fill: new Fill({ color: "#ffcc33" }),
-        }),
-      }),
-      name: "vectorLayer",
-    });
-    const measureLayer = new VectorLayer({
-      source: new VectorSource(),
-      style: new Style({
-        fill: new Fill({ color: "rgba(255, 255, 255, 0.2)" }),
-        stroke: new Stroke({
-          color: "rgba(0, 0, 0, 0.5)",
-          lineDash: [10, 10],
-          width: 2,
-        }),
-      }),
-      name: "measureLayer",
-    });
 
     olMap.current = new Map({
       target: mapRef.current,
       layers: [
-        // Base maps are at the bottom
-        osmLayer,
-        esriSatelliteLayer,
-        topoLayer,
-        googleSatelliteLayer,
-        googleHybridLayer,
-        cartoLayer,
-        // Vector and label layers are on top
-        mainVectorLayer,
-        measureLayer,
+        ...baseLayers,
+        vectorLayerRef.current,
         utmGridLineLayer,
         utmLabelLayer,
       ],
-      view: new View({ center: fromLonLat([102.6, 17.97]), zoom: 7 }),
+      view: new View({
+        center: fromLonLat([102.6, 17.97]),
+        zoom: 7,
+      }),
       controls: [],
     });
 
@@ -165,6 +148,48 @@ const MapComponent = ({
       }
     };
   }, [setMapInstance]);
+
+  // --- Effect to update historical layer date ---
+  useEffect(() => {
+    if (!olMap.current) return;
+
+    // Remove the old historical layer completely to ensure a fresh start
+    const layers = olMap.current.getLayers().getArray();
+    const existingHistoricalLayer = layers.find(
+      (layer) => layer.get("name") === "historicalLayer"
+    );
+    if (existingHistoricalLayer) {
+      olMap.current.removeLayer(existingHistoricalLayer);
+    }
+
+    if (isHistoricalLayerActive) {
+      const date = new Date(selectedDate);
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const firstDay = new Date(year, month, 1).toISOString().split("T")[0];
+      const lastDay = new Date(year, month + 1, 0).toISOString().split("T")[0];
+      const timeRange = `${firstDay}/${lastDay}`;
+
+      // Create a brand new layer with the new date
+      const newHistoricalLayer = new TileLayer({
+        name: "historicalLayer",
+        visible: true,
+        source: new TileWMS({
+          // **FINAL FIX**: Using your exact Service Endpoint ID and Visualization Layer ID
+          url: "https://services.sentinel-hub.com/ogc/wms/1474cead-771e-410a-8d9d-0376fab50178",
+          params: {
+            LAYERS: "2_TONEMAPPED_NATURAL_COLOR",
+            TIME: timeRange,
+            MAXCC: 80,
+          },
+          crossOrigin: "anonymous",
+        }),
+      });
+
+      olMap.current.addLayer(newHistoricalLayer);
+      newHistoricalLayer.setZIndex(0);
+    }
+  }, [selectedDate, isHistoricalLayerActive]);
 
   // --- Coordinate and Scale Display Effect ---
   useEffect(() => {
@@ -227,19 +252,15 @@ const MapComponent = ({
     const updateUtmGrid = () => {
       utmLabelSource.current.clear();
       utmGridLineSource.current.clear();
-
       const view = map.getView();
       const projection = view.getProjection();
       const extent = view.calculateExtent(map.getSize());
       const centerLonLat = toLonLat(getCenter(extent));
       const zone = Math.floor((centerLonLat[0] + 180) / 6) + 1;
       if (centerLonLat[1] < 0 || (zone !== 47 && zone !== 48)) return;
-
       const utmProjection = `EPSG:326${zone}`;
       const utmExtent = transformExtent(extent, projection, utmProjection);
-
       const interval = 2000;
-
       const labelFeatures = [];
       const lineFeatures = [];
       const textStyle = {
@@ -247,8 +268,6 @@ const MapComponent = ({
         fill: new Fill({ color: "#444" }),
         stroke: new Stroke({ color: "rgba(255,255,255,0.8)", width: 2 }),
       };
-
-      // Northing (Y-axis) lines and labels
       for (
         let n = Math.ceil(utmExtent[1] / interval) * interval;
         n <= utmExtent[3];
@@ -279,8 +298,6 @@ const MapComponent = ({
         ]);
         lineFeatures.push(new Feature({ geometry: lineGeom }));
       }
-
-      // Easting (X-axis) lines and labels
       for (
         let e = Math.ceil(utmExtent[0] / interval) * interval;
         e <= utmExtent[2];
@@ -360,59 +377,54 @@ const MapComponent = ({
     return cleanup;
   }, [graticuleEnabled, graticuleType]);
 
-  // --- Interactions (Draw, Select, Measure) Effect ---
+  // --- Tool Activation Effect using native OpenLayers Interactions ---
   useEffect(() => {
     if (!olMap.current) return;
-    const map = olMap.current;
-    if (drawInteraction.current) map.removeInteraction(drawInteraction.current);
-    if (selectInteraction.current)
-      map.removeInteraction(selectInteraction.current);
 
-    const formatLength = (line) =>
-      getLength(line) > 100
-        ? `${(getLength(line) / 1000).toFixed(2)} km`
-        : `${getLength(line).toFixed(2)} m`;
-    const formatArea = (polygon) =>
-      getArea(polygon) > 10000
-        ? `${(getArea(polygon) / 1000000).toFixed(2)} km²`
-        : `${getArea(polygon).toFixed(2)} m²`;
+    if (drawInteractionRef.current)
+      olMap.current.removeInteraction(drawInteractionRef.current);
+    if (modifyInteractionRef.current)
+      olMap.current.removeInteraction(modifyInteractionRef.current);
+    if (selectInteractionRef.current)
+      olMap.current.removeInteraction(selectInteractionRef.current);
 
     switch (activeTool) {
-      case "select":
-        selectInteraction.current = new Select({
-          /* ... select config ... */
-        });
-        map.addInteraction(selectInteraction.current);
-        break;
       case "draw-point":
       case "draw-line":
       case "draw-polygon":
       case "draw-circle":
-        const type = {
+        const drawType = {
           "draw-point": "Point",
           "draw-line": "LineString",
           "draw-polygon": "Polygon",
           "draw-circle": "Circle",
         }[activeTool];
-        drawInteraction.current = new Draw({
-          source: map
-            .getLayers()
-            .getArray()
-            .find((l) => l.get("name") === "vectorLayer")
-            .getSource(),
-          type,
+
+        drawInteractionRef.current = new Draw({
+          source: vectorLayerRef.current.getSource(),
+          type: drawType,
         });
-        map.addInteraction(drawInteraction.current);
-        drawInteraction.current.on("drawend", () => setActiveTool("select"));
+        olMap.current.addInteraction(drawInteractionRef.current);
+        break;
+
+      case "edit":
+        selectInteractionRef.current = new Select({
+          condition: click,
+          layers: [vectorLayerRef.current],
+        });
+        olMap.current.addInteraction(selectInteractionRef.current);
+
+        modifyInteractionRef.current = new Modify({
+          features: selectInteractionRef.current.getFeatures(),
+        });
+        olMap.current.addInteraction(modifyInteractionRef.current);
+        break;
+
+      case "pan":
+      default:
         break;
     }
-    return () => {
-      if (drawInteraction.current)
-        map.removeInteraction(drawInteraction.current);
-      if (selectInteraction.current)
-        map.removeInteraction(selectInteraction.current);
-    };
-  }, [activeTool, setActiveTool]);
+  }, [activeTool]);
 
   return (
     <div className="map-container">

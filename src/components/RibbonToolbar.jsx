@@ -31,6 +31,8 @@ import {
   Globe,
   Mountain,
   Image,
+  Clock,
+  Edit,
 } from "lucide-react";
 
 const RibbonToolbar = ({
@@ -43,13 +45,16 @@ const RibbonToolbar = ({
   setIsPanelVisible,
   layerStates,
   handleBaseMapChange,
+  isTimeSliderVisible,
+  setIsTimeSliderVisible,
+  toggleHistoricalLayer,
 }) => {
   const [selectedFeature, setSelectedFeature] = useState(null);
   const [showBaseMapMenu, setShowBaseMapMenu] = useState(false);
   const baseMapRef = useRef(null);
   const vectorSource = React.useRef(new VectorSource());
 
-  // --- Event listener to close dropdown when clicking outside ---
+  // Event listener to close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (baseMapRef.current && !baseMapRef.current.contains(event.target)) {
@@ -103,13 +108,8 @@ const RibbonToolbar = ({
 
   const handleClearMap = useCallback(() => {
     if (mapInstance) {
-      const vectorLayer = getLayerByName("vectorLayer");
-      if (vectorLayer) vectorLayer.getSource().clear();
-      const measureLayer = getLayerByName("measureLayer");
-      if (measureLayer) measureLayer.getSource().clear();
-      const bufferLayer = getLayerByName("bufferLayer");
-      if (bufferLayer) bufferLayer.getSource().clear();
-      mapInstance.getOverlays().clear();
+      const editorLayer = getLayerByName("editorLayer");
+      if (editorLayer) editorLayer.getSource().clear();
     }
   }, [mapInstance, getLayerByName]);
 
@@ -117,7 +117,6 @@ const RibbonToolbar = ({
     if (mapInstance)
       mapInstance.getView().setZoom(mapInstance.getView().getZoom() + 1);
   }, [mapInstance]);
-
   const handleZoomOut = useCallback(() => {
     if (mapInstance)
       mapInstance.getView().setZoom(mapInstance.getView().getZoom() - 1);
@@ -125,7 +124,7 @@ const RibbonToolbar = ({
 
   const handleZoomToLayer = useCallback(() => {
     if (mapInstance) {
-      const vectorLayer = getLayerByName("vectorLayer");
+      const vectorLayer = getLayerByName("editorLayer");
       if (vectorLayer && vectorLayer.getSource().getFeatures().length > 0) {
         mapInstance.getView().fit(vectorLayer.getSource().getExtent(), {
           padding: [50, 50, 50, 50],
@@ -224,19 +223,19 @@ const RibbonToolbar = ({
           className={`ribbon-tab ${activeTab === "home" ? "active" : ""}`}
           onClick={() => handleTabClick("home")}
         >
-          Home (ໜ້າຫຼັກ)
+          Home
         </button>
         <button
           className={`ribbon-tab ${activeTab === "map" ? "active" : ""}`}
           onClick={() => handleTabClick("map")}
         >
-          Map (ແຜນທີ່)
+          Map
         </button>
         <button
           className={`ribbon-tab ${activeTab === "analysis" ? "active" : ""}`}
           onClick={() => handleTabClick("analysis")}
         >
-          Analysis (ການວິເຄາະ)
+          Analysis
         </button>
       </div>
 
@@ -250,9 +249,9 @@ const RibbonToolbar = ({
                 toolName="pan"
               />
               <RibbonButton
-                icon={<MousePointer size={18} />}
-                label="Select"
-                toolName="select"
+                icon={<Edit size={18} />}
+                label="Edit"
+                toolName="edit"
               />
               <RibbonButton
                 icon={<Eraser size={18} />}
@@ -377,6 +376,20 @@ const RibbonToolbar = ({
               </div>
             </div>
             <div className="ribbon-group-title">Base Maps</div>
+          </div>
+          <div className="ribbon-group">
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<Clock size={18} />}
+                label="Historical"
+                isActive={isTimeSliderVisible}
+                onClick={() => {
+                  toggleHistoricalLayer(!isTimeSliderVisible);
+                  setIsTimeSliderVisible(!isTimeSliderVisible);
+                }}
+              />
+            </div>
+            <div className="ribbon-group-title">Time Series</div>
           </div>
         </div>
 
