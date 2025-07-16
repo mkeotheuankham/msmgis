@@ -153,7 +153,7 @@ const MapComponent = ({
   useEffect(() => {
     if (!olMap.current) return;
 
-    // Remove the old historical layer completely to ensure a fresh start
+    // **FIX**: Remove the old historical layer completely to ensure a fresh start
     const layers = olMap.current.getLayers().getArray();
     const existingHistoricalLayer = layers.find(
       (layer) => layer.get("name") === "historicalLayer"
@@ -172,13 +172,12 @@ const MapComponent = ({
 
       // Create a brand new layer with the new date
       const newHistoricalLayer = new TileLayer({
-        name: "historicalLayer",
+        name: "Sentinel 2",
         visible: true,
         source: new TileWMS({
-          // **FINAL FIX**: Using your exact Service Endpoint ID and Visualization Layer ID
-          url: "https://services.sentinel-hub.com/ogc/wms/1474cead-771e-410a-8d9d-0376fab50178",
+          url: "https://services.sentinel-hub.com/ogc/wms/5aadfeac-8c28-45a4-8f5e-d6341e60fab5",
           params: {
-            LAYERS: "2_TONEMAPPED_NATURAL_COLOR",
+            LAYERS: "2_TONEMAPPED-NATURAL-COLOR-L1C",
             TIME: timeRange,
             MAXCC: 80,
           },

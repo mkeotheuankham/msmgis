@@ -1,15 +1,4 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import VectorLayer from "ol/layer/Vector";
-import VectorSource from "ol/source/Vector";
-import Feature from "ol/Feature";
-import OlPolygon from "ol/geom/Polygon";
-import Style from "ol/style/Style";
-import Fill from "ol/style/Fill";
-import Stroke from "ol/style/Stroke";
-import { fromLonLat } from "ol/proj";
-import Select from "ol/interaction/Select";
-
-// Import Lucide React Icons
 import {
   Hand,
   MousePointer,
@@ -33,12 +22,12 @@ import {
   Image,
   Clock,
   Edit,
+  Upload,
 } from "lucide-react";
 
 const RibbonToolbar = ({
   activeTool,
   setActiveTool,
-  mapInstance,
   activeTab,
   setActiveTab,
   isPanelVisible,
@@ -48,11 +37,16 @@ const RibbonToolbar = ({
   isTimeSliderVisible,
   setIsTimeSliderVisible,
   toggleHistoricalLayer,
+  setIsImportModalVisible,
+  handleClearMap,
+  handleZoomIn,
+  handleZoomOut,
+  handleZoomToLayer,
+  handleFullExtent,
+  handleBuffer,
 }) => {
-  const [selectedFeature, setSelectedFeature] = useState(null);
   const [showBaseMapMenu, setShowBaseMapMenu] = useState(false);
   const baseMapRef = useRef(null);
-  const vectorSource = React.useRef(new VectorSource());
 
   // Event listener to close dropdown when clicking outside
   useEffect(() => {
@@ -65,36 +59,6 @@ const RibbonToolbar = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const getLayerByName = useCallback(
-    (name) => {
-      if (!mapInstance) return null;
-      let layerFound = null;
-      mapInstance.getLayers().forEach((layer) => {
-        if (layer.get("name") === name) {
-          layerFound = layer;
-        }
-      });
-      return layerFound;
-    },
-    [mapInstance]
-  );
-
-  useEffect(() => {
-    if (!mapInstance) return;
-    let existingVectorLayer = getLayerByName("bufferLayer");
-    if (!existingVectorLayer) {
-      const newVectorLayer = new VectorLayer({
-        source: vectorSource.current,
-        name: "bufferLayer",
-        style: new Style({
-          fill: new Fill({ color: "rgba(0, 255, 0, 0.2)" }),
-          stroke: new Stroke({ color: "#00ff00", width: 2, lineDash: [5, 5] }),
-        }),
-      });
-      mapInstance.addLayer(newVectorLayer);
-    }
-  }, [mapInstance, getLayerByName]);
-
   const handleTabClick = (tab) => {
     setActiveTab(tab);
   };
@@ -105,86 +69,6 @@ const RibbonToolbar = ({
     },
     [setActiveTool]
   );
-
-  const handleClearMap = useCallback(() => {
-    if (mapInstance) {
-      const editorLayer = getLayerByName("editorLayer");
-      if (editorLayer) editorLayer.getSource().clear();
-    }
-  }, [mapInstance, getLayerByName]);
-
-  const handleZoomIn = useCallback(() => {
-    if (mapInstance)
-      mapInstance.getView().setZoom(mapInstance.getView().getZoom() + 1);
-  }, [mapInstance]);
-  const handleZoomOut = useCallback(() => {
-    if (mapInstance)
-      mapInstance.getView().setZoom(mapInstance.getView().getZoom() - 1);
-  }, [mapInstance]);
-
-  const handleZoomToLayer = useCallback(() => {
-    if (mapInstance) {
-      const vectorLayer = getLayerByName("editorLayer");
-      if (vectorLayer && vectorLayer.getSource().getFeatures().length > 0) {
-        mapInstance.getView().fit(vectorLayer.getSource().getExtent(), {
-          padding: [50, 50, 50, 50],
-          duration: 1000,
-        });
-      }
-    }
-  }, [mapInstance, getLayerByName]);
-
-  const handleFullExtent = useCallback(() => {
-    if (mapInstance) {
-      mapInstance.getView().animate({
-        center: fromLonLat([102.6, 17.97]),
-        zoom: 7,
-        duration: 1000,
-      });
-    }
-  }, [mapInstance]);
-
-  const handleBuffer = useCallback(() => {
-    if (!mapInstance || !selectedFeature) {
-      alert("Please select a feature on the map first.");
-      return;
-    }
-    const bufferDistanceInput = prompt("Enter buffer distance in meters:");
-    const bufferDistanceInMeters = parseFloat(bufferDistanceInput);
-    if (isNaN(bufferDistanceInMeters) || bufferDistanceInMeters <= 0) {
-      alert("Invalid buffer distance. Please enter a positive number.");
-      return;
-    }
-    const geometry = selectedFeature.getGeometry();
-    if (geometry.getType() === "Point") {
-      const bufferPolygon = OlPolygon.circular(
-        geometry,
-        bufferDistanceInMeters,
-        64
-      ).transform("EPSG:4326", mapInstance.getView().getProjection());
-      const bufferFeature = new Feature(bufferPolygon);
-      vectorSource.current.clear();
-      vectorSource.current.addFeature(bufferFeature);
-    } else {
-      alert("Buffering is currently supported only for Point features.");
-    }
-  }, [mapInstance, selectedFeature]);
-
-  useEffect(() => {
-    if (mapInstance) {
-      const select = mapInstance
-        .getInteractions()
-        .getArray()
-        .find((interaction) => interaction instanceof Select);
-      if (select) {
-        select.on("select", (event) => {
-          setSelectedFeature(
-            event.selected.length > 0 ? event.selected[0] : null
-          );
-        });
-      }
-    }
-  }, [mapInstance]);
 
   const RibbonButton = ({ icon, label, toolName, onClick, isActive }) => {
     const buttonIsActive = isActive || activeTool === toolName;
@@ -285,6 +169,16 @@ const RibbonToolbar = ({
               />
             </div>
             <div className="ribbon-group-title">Draw</div>
+          </div>
+          <div className="ribbon-group">
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<Upload size={18} />}
+                label="Import Data"
+                onClick={() => setIsImportModalVisible(true)}
+              />
+            </div>
+            <div className="ribbon-group-title">Data</div>
           </div>
           <div className="ribbon-group">
             <div className="ribbon-buttons">

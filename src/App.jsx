@@ -3,8 +3,14 @@ import RibbonToolbar from "./components/RibbonToolbar";
 import MapComponent from "./components/MapComponent";
 import StatusBar from "./components/StatusBar";
 import Panel from "./components/ui/Panel";
-import TimeSliderPanel from "./components/ui/TimeSliderPanel"; // Import new component
+import TimeSliderPanel from "./components/ui/TimeSliderPanel";
+import ImportDataModal from "./components/ui/ImportDataModal";
 import "./App.css";
+import shp from "shpjs";
+import { KML } from "ol/format";
+import { fromLonLat } from "ol/proj";
+import Feature from "ol/Feature";
+import Point from "ol/geom/Point";
 
 function App() {
   // --- State Management ---
@@ -15,11 +21,13 @@ function App() {
   const [graticuleEnabled, setGraticuleEnabled] = useState(false);
   const [graticuleType, setGraticuleType] = useState("WGS84");
   const [showGraticuleOptions, setShowGraticuleOptions] = useState(false);
+  const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+  const [importedFeatures, setImportedFeatures] = useState([]);
 
   // State for Historical Imagery
   const [isHistoricalLayerActive, setIsHistoricalLayerActive] = useState(false);
   const [isTimeSliderVisible, setIsTimeSliderVisible] = useState(false);
-  const [selectedDate, setSelectedDate] = useState("2025-07-01");
+  const [selectedDate, setSelectedDate] = useState("2024-01-01"); // Default to a recent date
 
   // State for map layers
   const [layerStates, setLayerStates] = useState({
@@ -99,7 +107,6 @@ function App() {
         if (name === "historicalLayer") {
           layer.setVisible(isActive);
         }
-        // Hide base maps when historical is active
         if (
           [
             "osm",
@@ -113,18 +120,84 @@ function App() {
           if (isActive) {
             layer.setVisible(false);
           } else {
-            // Restore the default base map (osm) when historical is turned off
             layer.setVisible(name === "osm");
           }
         }
       });
-      // If turning off, reset layer states to default
       if (!isActive) {
         setLayerStates((prev) => ({
           ...prev,
           osm: { ...prev.osm, visible: true },
         }));
       }
+    }
+  };
+
+  const handleFileImport = async (file) => {
+    if (!file) return;
+
+    const extension = file.name.split(".").pop().toLowerCase();
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+      const content = e.target.result;
+      let features = [];
+
+      try {
+        if (extension === "csv") {
+          const lines = content.split("\n").slice(1); // Skip header
+          lines.forEach((line) => {
+            const parts = line.split(",");
+            const lon = parseFloat(parts[0]);
+            const lat = parseFloat(parts[1]);
+            if (!isNaN(lon) && !isNaN(lat)) {
+              const feature = new Feature({
+                geometry: new Point(fromLonLat([lon, lat])),
+              });
+              features.push(feature);
+            }
+          });
+        } else if (extension === "kml") {
+          const kmlFormat = new KML({
+            extractStyles: true,
+            showPointNames: true,
+          });
+          features = kmlFormat.readFeatures(content, {
+            dataProjection: "EPSG:4326",
+            featureProjection: "EPSG:3857",
+          });
+        } else if (extension === "zip") {
+          const geojson = await shp(content);
+          const kmlFormatForGeoJSON = new KML();
+          if (Array.isArray(geojson)) {
+            geojson.forEach((g) => {
+              features = features.concat(
+                kmlFormatForGeoJSON.readFeatures(g, {
+                  dataProjection: "EPSG:4326",
+                  featureProjection: "EPSG:3857",
+                })
+              );
+            });
+          } else {
+            features = kmlFormatForGeoJSON.readFeatures(geojson, {
+              dataProjection: "EPSG:4326",
+              featureProjection: "EPSG:3857",
+            });
+          }
+        }
+        setImportedFeatures(features);
+      } catch (error) {
+        console.error("Error importing file:", error);
+        alert(
+          "Failed to import file. Please check the file format and content."
+        );
+      }
+    };
+
+    if (extension === "zip") {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
     }
   };
 
@@ -143,6 +216,7 @@ function App() {
         isTimeSliderVisible={isTimeSliderVisible}
         setIsTimeSliderVisible={setIsTimeSliderVisible}
         toggleHistoricalLayer={toggleHistoricalLayer}
+        setIsImportModalVisible={setIsImportModalVisible}
       />
       <div className="main-content">
         <MapComponent
@@ -152,6 +226,7 @@ function App() {
           graticuleType={graticuleType}
           isHistoricalLayerActive={isHistoricalLayerActive}
           selectedDate={selectedDate}
+          importedFeatures={importedFeatures}
         />
         <Panel
           isVisible={isPanelVisible}
@@ -164,6 +239,11 @@ function App() {
         isVisible={isTimeSliderVisible}
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
+      />
+      <ImportDataModal
+        isVisible={isImportModalVisible}
+        onClose={() => setIsImportModalVisible(false)}
+        onFileImport={handleFileImport}
       />
       <StatusBar
         graticuleEnabled={graticuleEnabled}
