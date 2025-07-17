@@ -66,7 +66,7 @@ body {
   position: relative; /* Set positioning context for the absolute panel */
 }
 
-/* Panel styles for slide-over effect */
+/* Panel styles for slide-over effect (Right-side Layer Panel) */
 .panel {
   position: absolute; /* Position over the map */
   top: 0;
@@ -94,18 +94,167 @@ body {
 }
 
 .panel-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.panel-section-title {
-  font-size: 14px;
+.panel-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: 8px;
+  color: #f0f0f0;
+}
+
+.panel-section-header.static {
+  cursor: default;
+}
+
+.panel-section-header-h3 {
+  margin: 0;
+  font-size: 1.05rem;
   font-weight: 600;
-  color: var(--color-accent-blue);
-  border-bottom: 1px solid var(--color-dark-border);
-  padding-bottom: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-button {
+  background: none;
+  border: none;
+  color: #f0f0f0;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease-in-out;
+}
+
+.toggle-button.expanded {
+  transform: rotate(0deg);
+}
+
+.toggle-button:not(.expanded) {
+  transform: rotate(-90deg);
+}
+
+.property-grid {
+  padding-top: 8px;
+  display: grid;
+  gap: 10px;
+}
+
+.no-items-message {
+  font-style: italic;
+  color: #a0a0a0;
+  text-align: center;
+  padding: 15px 0;
+}
+
+/* --- Layer Manager Styles --- */
+.layer-manager-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 0.5rem;
+}
+
+.layer-control-item {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.layer-control-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.layer-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-grow: 1;
+  margin-right: 1rem;
+}
+
+.layer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.layer-actions button {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.layer-actions button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-active);
+}
+
+.opacity-slider-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.opacity-slider {
+  flex-grow: 1;
+}
+
+.opacity-value {
+  font-size: 0.8rem;
+  color: #a0a0a0;
+  min-width: 35px;
+  text-align: right;
+}
+
+.layer-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #f0f0f0;
+}
+
+.layer-toggle-label input[type="checkbox"] {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background-color: transparent;
+  display: inline-block;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.layer-toggle-label input[type="checkbox"]:checked {
+  background-color: var(--color-accent-blue);
+  border-color: var(--color-accent-blue);
 }
 
 /* Ribbon Toolbar */
@@ -114,7 +263,7 @@ body {
   border-bottom: 1px solid var(--color-dark-border);
   padding: var(--spacing-sm) var(--spacing-md);
   box-shadow: 0 2px var(--spacing-sm) var(--color-shadow);
-  z-index: 20; /* Ensure ribbon is above panel */
+  z-index: 20;
   position: relative;
 }
 
@@ -153,22 +302,21 @@ body {
 .ribbon-content {
   display: flex;
   padding: var(--spacing-sm) 0;
-  min-height: 80px; /* Set a fixed height to prevent jitter */
+  min-height: 80px;
   border-top: 1px solid var(--color-dark-border);
   background: var(--color-dark-surface-alt);
   box-shadow: inset 0 1px var(--spacing-xs) var(--color-inner-shadow);
 }
 
-/* New Tab Pane styles to prevent jitter */
 .tab-pane {
-  display: none; /* Hide inactive tabs */
+  display: none;
   width: 100%;
   align-items: flex-start;
   gap: var(--spacing-xl);
 }
 
 .tab-pane.active {
-  display: flex; /* Show the active tab */
+  display: flex;
 }
 
 .ribbon-group {
@@ -202,7 +350,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; /* Center content vertically */
+  justify-content: center;
   padding: 6px var(--spacing-sm);
   background: rgba(50, 50, 50, 0.6);
   border: 1px solid rgba(80, 80, 80, 0.7);
@@ -211,8 +359,8 @@ body {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   transition: all var(--transition-speed) var(--transition-ease);
-  min-width: 60px; /* Adjusted min-width for better spacing */
-  height: 55px; /* Fixed height for all buttons */
+  min-width: 60px;
+  height: 55px;
   text-align: center;
 }
 
@@ -235,24 +383,10 @@ body {
 
 .ribbon-button span {
   margin-top: 4px;
-  line-height: 1.2; /* Improve text wrapping */
+  line-height: 1.2;
 }
 
-/* Map Container */
-.map-container {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-}
-
-#map {
-  width: 100%;
-  height: 100%;
-  background-color: #222;
-}
-
-/* --- New Styles for Base Map Dropdown --- */
+/* --- Base Map Dropdown & Panel Button Styles --- */
 .basemap-switcher-container {
   position: relative;
   display: inline-block;
@@ -260,7 +394,7 @@ body {
 
 .basemap-switcher-menu {
   position: absolute;
-  top: calc(100% + 5px); /* Position below the button with a small gap */
+  top: calc(100% + 5px);
   left: 0;
   background-color: var(--color-dark-surface-alt);
   border: 1px solid var(--color-dark-border);
@@ -298,6 +432,20 @@ body {
   background-color: var(--color-accent-blue);
   color: var(--color-text-active);
   font-weight: 600;
+}
+
+/* Map Container */
+.map-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  background-color: #222;
 }
 
 /* Other styles... */
@@ -338,4 +486,118 @@ body {
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
   border-top: 5px solid var(--color-overlay-background);
+}
+
+/* --- Attribute Panel Styles --- */
+.attribute-panel {
+  position: absolute;
+  background-color: rgba(
+    40,
+    42,
+    45,
+    0.85
+  ); /* Dark, semi-transparent background */
+  backdrop-filter: blur(10px); /* Frosted glass effect */
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 1020;
+  width: 320px;
+  max-height: 350px;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text-light);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.attribute-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.attribute-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.attribute-panel-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.attribute-panel-close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-active);
+}
+
+.attribute-panel-content {
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+/* Custom scrollbar for the attribute panel */
+.attribute-panel-content::-webkit-scrollbar {
+  width: 6px;
+}
+.attribute-panel-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.attribute-panel-content::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+.attribute-panel-content::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.attribute-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.attribute-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.attribute-key {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.attribute-value {
+  font-size: 0.9rem;
+  color: var(--color-text-light);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 0.5rem;
+  border-radius: 4px;
+  word-break: break-all;
 }

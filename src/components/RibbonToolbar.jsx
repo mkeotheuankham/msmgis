@@ -30,10 +30,8 @@ const RibbonToolbar = ({
   setActiveTool,
   activeTab,
   setActiveTab,
-  isPanelVisible,
-  setIsPanelVisible,
-  layerStates,
-  handleBaseMapChange,
+  activePanel,
+  setActivePanel,
   isTimeSliderVisible,
   setIsTimeSliderVisible,
   toggleHistoricalLayer,
@@ -43,32 +41,16 @@ const RibbonToolbar = ({
   handleZoomOut,
   handleZoomToLayer,
   handleFullExtent,
-  handleBuffer,
 }) => {
-  const [showBaseMapMenu, setShowBaseMapMenu] = useState(false);
-  const baseMapRef = useRef(null);
-
-  // Event listener to close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (baseMapRef.current && !baseMapRef.current.contains(event.target)) {
-        setShowBaseMapMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleTabClick = (tab) => {
-    setActiveTab(tab);
-  };
-
+  const handleTabClick = (tab) => setActiveTab(tab);
   const handleToolClick = useCallback(
-    (tool) => {
-      setActiveTool(tool);
-    },
+    (tool) => setActiveTool(tool),
     [setActiveTool]
   );
+
+  const handlePanelToggle = (panelName) => {
+    setActivePanel((prev) => (prev === panelName ? null : panelName));
+  };
 
   const RibbonButton = ({ icon, label, toolName, onClick, isActive }) => {
     const buttonIsActive = isActive || activeTool === toolName;
@@ -83,22 +65,6 @@ const RibbonToolbar = ({
       </button>
     );
   };
-
-  const baseMaps = [
-    { key: "osm", label: "Street Map", icon: <StreetMapIcon size={18} /> },
-    { key: "satellite", label: "Esri Satellite", icon: <Image size={18} /> },
-    {
-      key: "googleSatellite",
-      label: "Google Satellite",
-      icon: <Globe size={18} />,
-    },
-    { key: "googleHybrid", label: "Google Hybrid", icon: <Layers size={18} /> },
-    { key: "topo", label: "Topographic", icon: <Mountain size={18} /> },
-    { key: "carto", label: "Carto Voyager", icon: <MapPin size={18} /> },
-  ];
-
-  const activeBaseMap =
-    baseMaps.find((bm) => layerStates[bm.key]?.visible) || baseMaps[0];
 
   return (
     <div className="ribbon-toolbar">
@@ -233,41 +199,20 @@ const RibbonToolbar = ({
               <RibbonButton
                 icon={<Layers size={18} />}
                 label="Layers Panel"
-                isActive={isPanelVisible}
-                onClick={() => setIsPanelVisible((prev) => !prev)}
+                isActive={activePanel === "layers"}
+                onClick={() => handlePanelToggle("layers")}
               />
             </div>
             <div className="ribbon-group-title">View</div>
           </div>
           <div className="ribbon-group">
-            <div className="ribbon-buttons" ref={baseMapRef}>
-              <div className="basemap-switcher-container">
-                <RibbonButton
-                  icon={activeBaseMap.icon}
-                  label={activeBaseMap.label}
-                  isActive={showBaseMapMenu}
-                  onClick={() => setShowBaseMapMenu((prev) => !prev)}
-                />
-                {showBaseMapMenu && (
-                  <div className="basemap-switcher-menu">
-                    {baseMaps.map((bm) => (
-                      <button
-                        key={bm.key}
-                        className={`basemap-option ${
-                          layerStates[bm.key]?.visible ? "active" : ""
-                        }`}
-                        onClick={() => {
-                          handleBaseMapChange(bm.key);
-                          setShowBaseMapMenu(false);
-                        }}
-                      >
-                        {bm.icon}
-                        <span>{bm.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<StreetMapIcon size={18} />}
+                label="Base Maps"
+                isActive={activePanel === "basemaps"}
+                onClick={() => handlePanelToggle("basemaps")}
+              />
             </div>
             <div className="ribbon-group-title">Base Maps</div>
           </div>
@@ -293,7 +238,9 @@ const RibbonToolbar = ({
               <RibbonButton
                 icon={<Target size={18} />}
                 label="Buffer"
-                onClick={handleBuffer}
+                onClick={() => {
+                  /* Buffer logic needed in App.jsx */
+                }}
               />
             </div>
             <div className="ribbon-group-title">Geoprocessing</div>

@@ -103,17 +103,17 @@ const ImportDataModal = ({ isVisible, onClose, onFileImport }) => {
           onDrop={handleDrop}
           onDragOver={handleDragOver}
         >
-          <p>ລາກไฟล์ມາທີ່ນີ້ ຫຼື ຄລິກເພື່ອເລືອກไฟล์</p>
+          <p>ລາກໄຟລ໌ມາທີ່ນີ້ ຫຼື ຄລິກເພື່ອເລືອກไฟล์</p>
           <p>(Drag & Drop or Click to Upload)</p>
           <input
             type="file"
             id="fileInput"
             style={{ display: "none" }}
-            accept=".csv, .kml, .zip"
+            accept=".csv, .kml, .zip, .geojson, .json" // Added geojson and json
             onChange={handleFileChange}
           />
           <div style={styles.instructions}>
-            <p>ຮອງຮັບไฟล์ປະເພດ:</p>
+            <p>ຮອງຮັບໄຟລ໌ປະເພດ:</p>
             <div
               style={{
                 display: "flex",
@@ -129,7 +129,7 @@ const ImportDataModal = ({ isVisible, onClose, onFileImport }) => {
                 <FileArchive size={16} /> SHP (.zip)
               </span>
               <span>
-                <FileJson size={16} /> KML
+                <FileJson size={16} /> KML / GeoJSON
               </span>
             </div>
           </div>

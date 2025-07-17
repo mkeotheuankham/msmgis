@@ -26,6 +26,7 @@ import Style from "ol/style/Style";
 import Fill from "ol/style/Fill";
 import Stroke from "ol/style/Stroke";
 import Text from "ol/style/Text";
+import CircleStyle from "ol/style/Circle"; // **FIX: Added missing import for CircleStyle**
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
 import TileWMS from "ol/source/TileWMS";
@@ -42,6 +43,9 @@ const MapComponent = ({
   graticuleType,
   isHistoricalLayerActive,
   selectedDate,
+  importedLayers,
+  baseLayerStates,
+  onFeatureSelect,
 }) => {
   const mapRef = useRef();
   const olMap = useRef(null);
@@ -149,11 +153,24 @@ const MapComponent = ({
     };
   }, [setMapInstance]);
 
+  // --- Effect to manage Base Layer Visibility and Opacity ---
+  useEffect(() => {
+    if (!olMap.current || !baseLayerStates) return;
+
+    olMap.current.getLayers().forEach((layer) => {
+      const layerName = layer.get("name");
+      const state = baseLayerStates[layerName];
+      if (state) {
+        layer.setVisible(state.visible);
+        layer.setOpacity(state.opacity);
+      }
+    });
+  }, [baseLayerStates]);
+
   // --- Effect to update historical layer date ---
   useEffect(() => {
     if (!olMap.current) return;
 
-    // **FIX**: Remove the old historical layer completely to ensure a fresh start
     const layers = olMap.current.getLayers().getArray();
     const existingHistoricalLayer = layers.find(
       (layer) => layer.get("name") === "historicalLayer"
@@ -170,14 +187,13 @@ const MapComponent = ({
       const lastDay = new Date(year, month + 1, 0).toISOString().split("T")[0];
       const timeRange = `${firstDay}/${lastDay}`;
 
-      // Create a brand new layer with the new date
       const newHistoricalLayer = new TileLayer({
-        name: "Sentinel 2",
+        name: "historicalLayer",
         visible: true,
         source: new TileWMS({
-          url: "https://services.sentinel-hub.com/ogc/wms/5aadfeac-8c28-45a4-8f5e-d6341e60fab5",
+          url: "https://services.sentinel-hub.com/ogc/wms/1474cead-771e-410a-8d9d-0376f0376fc9",
           params: {
-            LAYERS: "2_TONEMAPPED-NATURAL-COLOR-L1C",
+            LAYERS: "1_TRUE_COLOR",
             TIME: timeRange,
             MAXCC: 80,
           },
@@ -189,6 +205,53 @@ const MapComponent = ({
       newHistoricalLayer.setZIndex(0);
     }
   }, [selectedDate, isHistoricalLayerActive]);
+
+  // --- Effect to handle imported features ---
+  useEffect(() => {
+    if (!olMap.current) return;
+
+    olMap.current
+      .getLayers()
+      .getArray()
+      .filter((layer) => layer.get("isImportedLayer"))
+      .forEach((layer) => olMap.current.removeLayer(layer));
+
+    importedLayers.forEach((layerData) => {
+      const vectorSource = new VectorSource({
+        features: layerData.features,
+      });
+      const vectorLayer = new VectorLayer({
+        source: vectorSource,
+        name: layerData.name,
+        visible: layerData.visible,
+        opacity: layerData.opacity,
+        style: new Style({
+          fill: new Fill({ color: "rgba(255, 0, 255, 0.4)" }),
+          stroke: new Stroke({ color: "#ff00ff", width: 3 }),
+          image: new CircleStyle({
+            radius: 7,
+            fill: new Fill({ color: "#ff00ff" }),
+          }),
+        }),
+      });
+      vectorLayer.set("isImportedLayer", true);
+      vectorLayer.set("id", layerData.id);
+
+      olMap.current.addLayer(vectorLayer);
+    });
+
+    if (importedLayers.length > 0) {
+      const latestLayer = importedLayers[0];
+      if (latestLayer.features.length > 0) {
+        const source = new VectorSource({ features: latestLayer.features });
+        const extent = source.getExtent();
+        olMap.current.getView().fit(extent, {
+          padding: [100, 100, 100, 100],
+          duration: 1000,
+        });
+      }
+    }
+  }, [importedLayers]);
 
   // --- Coordinate and Scale Display Effect ---
   useEffect(() => {
@@ -387,6 +450,21 @@ const MapComponent = ({
     if (selectInteractionRef.current)
       olMap.current.removeInteraction(selectInteractionRef.current);
 
+    const identifyClickListener = (evt) => {
+      if (activeTool !== "identify") return;
+      const features = [];
+      olMap.current.forEachFeatureAtPixel(evt.pixel, (feature) => {
+        features.push(feature);
+      });
+      if (features.length > 0) {
+        const topFeature = features[0];
+        const properties = topFeature.getProperties();
+        onFeatureSelect({ attributes: properties, coordinate: evt.coordinate });
+      } else {
+        onFeatureSelect(null);
+      }
+    };
+
     switch (activeTool) {
       case "draw-point":
       case "draw-line":
@@ -419,11 +497,21 @@ const MapComponent = ({
         olMap.current.addInteraction(modifyInteractionRef.current);
         break;
 
+      case "identify":
+        olMap.current.on("singleclick", identifyClickListener);
+        break;
+
       case "pan":
       default:
         break;
     }
-  }, [activeTool]);
+
+    return () => {
+      if (olMap.current) {
+        olMap.current.un("singleclick", identifyClickListener);
+      }
+    };
+  }, [activeTool, onFeatureSelect]);
 
   return (
     <div className="map-container">

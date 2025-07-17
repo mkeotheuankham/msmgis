@@ -1,127 +1,32 @@
 import React, { useState } from "react";
-import { Layers, MapPin, ChevronDown } from "lucide-react";
-
-// This component is now controlled by a CSS class for visibility.
-
-const styles = {
-  // Styles remain the same as before
-  panelSection: {
-    backgroundColor: "rgba(0, 0, 0, 0.25)",
-    borderRadius: "8px",
-    padding: "12px 16px",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
-  },
-  panelSectionHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    cursor: "pointer",
-    padding: "4px 0",
-    marginBottom: "8px",
-    color: "#f0f0f0",
-  },
-  panelSectionHeaderH3: {
-    margin: 0,
-    fontSize: "1.05rem",
-    fontWeight: 600,
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-  },
-  toggleButton: (isExpanded) => ({
-    background: "none",
-    border: "none",
-    color: "#f0f0f0",
-    cursor: "pointer",
-    padding: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transition: "transform 0.2s ease-in-out",
-    transform: isExpanded ? "rotate(0deg)" : "rotate(-180deg)",
-  }),
-  propertyGrid: {
-    paddingTop: "8px",
-    display: "grid",
-    gap: "10px",
-  },
-  provinceButton: (isDisabled, isSelected) => ({
-    width: "100%",
-    backgroundColor: isSelected ? "#007acc" : "#1e1e1e",
-    border: `1px solid ${isSelected ? "#007acc" : "rgba(255, 255, 255, 0.1)"}`,
-    color: isSelected ? "white" : "#f0f0f0",
-    padding: "8px 10px",
-    borderRadius: "6px",
-    textAlign: "left",
-    cursor: isDisabled ? "not-allowed" : "pointer",
-    transition: "all 0.2s ease",
-    opacity: isDisabled ? 0.6 : 1,
-  }),
-  checkboxInput: (isChecked, isDisabled) => ({
-    appearance: "none",
-    width: "18px",
-    height: "18px",
-    border: `1px solid ${isChecked ? "#007acc" : "rgba(255, 255, 255, 0.2)"}`,
-    borderRadius: "4px",
-    backgroundColor: isChecked ? "#007acc" : "transparent",
-    display: "inline-block",
-    position: "relative",
-    cursor: isDisabled ? "not-allowed" : "pointer",
-    flexShrink: 0,
-  }),
-  opacitySliderContainer: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    width: "100%",
-    paddingLeft: "28px",
-  },
-  opacitySlider: {
-    flexGrow: 1,
-  },
-  opacityValue: {
-    fontSize: "0.8rem",
-    color: "#a0a0a0",
-    minWidth: "35px",
-    textAlign: "right",
-  },
-  layerControlItem: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-  },
-  layerToggleLabel: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    fontSize: "0.9rem",
-    cursor: "pointer",
-    color: "#f0f0f0",
-  },
-  noItemsMessage: {
-    fontStyle: "italic",
-    color: "#a0a0a0",
-    textAlign: "center",
-    padding: "15px 0",
-  },
-};
+import {
+  Layers,
+  ChevronDown,
+  Trash2,
+  ZoomIn,
+  Map as StreetMapIcon,
+  Globe,
+  Mountain,
+  Image,
+  MapPin,
+} from "lucide-react";
 
 // --- Internal Sub-Components ---
-const CustomCheckbox = ({ checked, onChange, label, disabled }) => (
-  <label style={styles.layerToggleLabel}>
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={onChange}
-      disabled={disabled}
-      style={styles.checkboxInput(checked, disabled)}
-    />
-    {label}
-  </label>
+
+const SectionHeader = ({ title, icon: Icon, isExpanded, onToggle }) => (
+  <div className="panel-section-header" onClick={onToggle}>
+    <h3 className="panel-section-header-h3">
+      <Icon size={16} />
+      <span>{title}</span>
+    </h3>
+    <button className={`toggle-button ${isExpanded ? "expanded" : ""}`}>
+      <ChevronDown size={20} />
+    </button>
+  </div>
 );
 
 const OpacitySlider = ({ opacity, onOpacityChange, disabled }) => (
-  <div style={styles.opacitySliderContainer}>
+  <div className="opacity-slider-container">
     <input
       type="range"
       min="0"
@@ -130,132 +35,204 @@ const OpacitySlider = ({ opacity, onOpacityChange, disabled }) => (
       value={opacity}
       onChange={(e) => onOpacityChange(parseFloat(e.target.value))}
       disabled={disabled}
-      style={styles.opacitySlider}
+      className="opacity-slider"
     />
-    <span style={styles.opacityValue}>{(opacity * 100).toFixed(0)}%</span>
+    <span className="opacity-value">{(opacity * 100).toFixed(0)}%</span>
   </div>
 );
 
-const LayerTogglesSection = ({
-  layerStates,
-  onVisibilityChange,
-  onOpacityChange,
-}) => (
-  <div style={styles.propertyGrid}>
-    {Object.entries(layerStates).map(([key, layer]) => (
-      <div key={key} style={styles.layerControlItem}>
-        <CustomCheckbox
-          label={layer.name}
-          checked={layer.visible}
-          onChange={() => onVisibilityChange(key, !layer.visible)}
-        />
-        <OpacitySlider
-          opacity={layer.opacity}
-          onOpacityChange={(value) => onOpacityChange(key, value)}
-          disabled={!layer.visible}
-        />
-      </div>
-    ))}
-  </div>
-);
-
-const ProvinceControlsSection = () => {
-  const provinces = [
-    { name: "VientianeCapital", label: "ນະຄອນຫຼວງວຽງຈັນ" },
-    { name: "LuangPrabang", label: "ຫຼວງພະບາງ" },
-    { name: "Savannakhet", label: "ສະຫວັນນະເຂດ" },
-    { name: "Champasak", label: "ຈໍາປາສັກ" },
+const BaseLayersSection = ({
+  baseLayerStates,
+  onBaseMapChange,
+  isExpanded,
+}) => {
+  const baseMaps = [
+    { key: "osm", name: "Street Map", icon: <StreetMapIcon size={18} /> },
+    { key: "satellite", name: "Esri Satellite", icon: <Image size={18} /> },
+    {
+      key: "googleSatellite",
+      name: "Google Satellite",
+      icon: <Globe size={18} />,
+    },
+    { key: "googleHybrid", name: "Google Hybrid", icon: <Layers size={18} /> },
+    { key: "topo", name: "Topographic", icon: <Mountain size={18} /> },
+    { key: "carto", name: "Carto Voyager", icon: <MapPin size={18} /> },
   ];
-  const [selected, setSelected] = useState(null);
+
+  if (!isExpanded) return null;
+
   return (
-    <div style={{ ...styles.propertyGrid, gridTemplateColumns: "1fr 1fr" }}>
-      {provinces.map((p) => (
-        <button
-          key={p.name}
-          style={styles.provinceButton(false, selected === p.name)}
-          onClick={() => setSelected(p.name)}
-        >
-          {" "}
-          {p.label}{" "}
-        </button>
-      ))}
+    <div className="property-grid">
+      {baseMaps.map(
+        ({ key, name, icon }) =>
+          baseLayerStates[key] && (
+            <button
+              key={key}
+              className={`basemap-option ${
+                baseLayerStates[key].visible ? "active" : ""
+              }`}
+              onClick={() => onBaseMapChange(key)}
+            >
+              {icon}
+              <span>{name}</span>
+            </button>
+          )
+      )}
     </div>
   );
 };
 
-const DistrictSelectorSection = () => (
-  <p style={styles.noItemsMessage}>
-    {" "}
-    ກະລຸນາເລືອກແຂວງກ່ອນ (Please select a province first){" "}
-  </p>
-);
-
-// --- Main Panel Component ---
-const Panel = ({
-  isVisible,
-  layerStates,
+const ImportedLayerControl = ({
+  layer,
   onVisibilityChange,
   onOpacityChange,
+  onRemove,
+  onZoom,
+}) => {
+  return (
+    <div className="layer-control-item">
+      <div className="layer-control-header">
+        <label className="layer-toggle-label">
+          <input
+            type="checkbox"
+            checked={layer.visible}
+            onChange={() => onVisibilityChange(layer.id, !layer.visible)}
+          />
+          <span className="layer-name" title={layer.name}>
+            {layer.name}
+          </span>
+        </label>
+        <div className="layer-actions">
+          <button onClick={() => onZoom(layer.id)} title="Zoom to Layer">
+            <ZoomIn size={16} />
+          </button>
+          <button onClick={() => onRemove(layer.id)} title="Remove Layer">
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
+      <OpacitySlider
+        opacity={layer.opacity}
+        onOpacityChange={(value) => onOpacityChange(layer.id, value)}
+        disabled={!layer.visible}
+      />
+    </div>
+  );
+};
+
+const ImportedLayersSection = ({
+  layers,
+  onVisibilityChange,
+  onOpacityChange,
+  onRemove,
+  onZoom,
+  isExpanded,
+}) => {
+  if (!isExpanded) return null;
+
+  return (
+    <div className="property-grid">
+      {layers.length > 0 ? (
+        layers.map((layer) => (
+          <ImportedLayerControl
+            key={layer.id}
+            layer={layer}
+            onVisibilityChange={onVisibilityChange}
+            onOpacityChange={onOpacityChange}
+            onRemove={onRemove}
+            onZoom={onZoom}
+          />
+        ))
+      ) : (
+        <p className="no-items-message">No data imported yet.</p>
+      )}
+    </div>
+  );
+};
+
+// --- Main Panel Component ---
+
+const Panel = ({
+  isVisible,
+  baseLayerStates,
+  onBaseMapChange,
+  importedLayers,
+  setImportedLayers,
+  mapInstance,
 }) => {
   const [expandedSections, setExpandedSections] = useState({
-    layers: true,
-    provinces: true,
-    districts: true,
+    baseLayers: true,
+    importedLayers: true,
   });
 
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  const sections = [
-    {
-      key: "layers",
-      title: "ຊັ້ນຂໍ້ມູນ (Layers)",
-      icon: Layers,
-      component: (
-        <LayerTogglesSection
-          layerStates={layerStates}
-          onVisibilityChange={onVisibilityChange}
-          onOpacityChange={onOpacityChange}
-        />
-      ),
-    },
-    {
-      key: "provinces",
-      title: "ແຂວງ (Provinces)",
-      icon: MapPin,
-      component: <ProvinceControlsSection />,
-    },
-    {
-      key: "districts",
-      title: "ເມືອງ (Districts)",
-      icon: MapPin,
-      component: <DistrictSelectorSection />,
-    },
-  ];
+  // --- Handlers for Imported Layers ---
+  const handleVisibilityChange = (id, visible) => {
+    setImportedLayers((layers) =>
+      layers.map((l) => (l.id === id ? { ...l, visible } : l))
+    );
+  };
 
-  // Apply the 'visible' class based on the isVisible prop
-  const panelClassName = `panel ${isVisible ? "visible" : ""}`;
+  const handleOpacityChange = (id, opacity) => {
+    setImportedLayers((layers) =>
+      layers.map((l) => (l.id === id ? { ...l, opacity } : l))
+    );
+  };
+
+  const handleRemoveLayer = (id) => {
+    setImportedLayers((layers) => layers.filter((l) => l.id !== id));
+  };
+
+  const handleZoomToLayer = (id) => {
+    if (!mapInstance) return;
+    const layerToZoom = importedLayers.find((l) => l.id === id);
+    if (layerToZoom && layerToZoom.features.length > 0) {
+      const source = new VectorSource({ features: layerToZoom.features });
+      const extent = source.getExtent();
+      mapInstance.getView().fit(extent, {
+        padding: [100, 100, 100, 100],
+        duration: 1000,
+      });
+    }
+  };
 
   return (
-    <div className={panelClassName}>
-      {sections.map((section) => (
-        <div key={section.key} style={styles.panelSection}>
-          <div
-            style={styles.panelSectionHeader}
-            onClick={() => toggleSection(section.key)}
-          >
-            <h3 style={styles.panelSectionHeaderH3}>
-              <section.icon size={16} style={{ marginRight: "8px" }} />
-              {section.title}
-            </h3>
-            <button style={styles.toggleButton(expandedSections[section.key])}>
-              <ChevronDown size={20} />
-            </button>
-          </div>
-          {expandedSections[section.key] && section.component}
-        </div>
-      ))}
+    <div className={`panel ${isVisible ? "visible" : ""}`}>
+      {/* Base Layers Section */}
+      <div className="panel-section">
+        <SectionHeader
+          title="Base Layers"
+          icon={Layers}
+          isExpanded={expandedSections.baseLayers}
+          onToggle={() => toggleSection("baseLayers")}
+        />
+        <BaseLayersSection
+          baseLayerStates={baseLayerStates}
+          onBaseMapChange={onBaseMapChange}
+          isExpanded={expandedSections.baseLayers}
+        />
+      </div>
+
+      {/* Imported Layers Section */}
+      <div className="panel-section">
+        <SectionHeader
+          title="Imported Layers"
+          icon={Layers}
+          isExpanded={expandedSections.importedLayers}
+          onToggle={() => toggleSection("importedLayers")}
+        />
+        <ImportedLayersSection
+          layers={importedLayers}
+          onVisibilityChange={handleVisibilityChange}
+          onOpacityChange={handleOpacityChange}
+          onRemove={handleRemoveLayer}
+          onZoom={handleZoomToLayer}
+          isExpanded={expandedSections.importedLayers}
+        />
+      </div>
     </div>
   );
 };
