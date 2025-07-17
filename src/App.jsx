@@ -10,10 +10,28 @@ import AttributePanel from "./components/ui/AttributePanel";
 import "./App.css";
 import shp from "shpjs";
 import { KML, GeoJSON } from "ol/format";
-import { fromLonLat } from "ol/proj";
+import { fromLonLat, transform } from "ol/proj";
 import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
 import { v4 as uuidv4 } from "uuid";
+import proj4 from "proj4";
+
+// Define common datums for the region
+proj4.defs([
+  ["EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs"], // WGS84 Geographic
+  // WGS84 UTM Zones
+  ["EPSG:32647", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs"],
+  ["EPSG:32648", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs"],
+  // Indian 1975 UTM Zones with specific transformation parameters for Thailand/Laos region
+  [
+    "INDIAN1975_UTM47N",
+    "+proj=utm +zone=47 +ellps=evrst30 +towgs84=206,836,295,0,0,0,0 +units=m +no_defs",
+  ],
+  [
+    "INDIAN1975_UTM48N",
+    "+proj=utm +zone=48 +ellps=evrst30 +towgs84=206,836,295,0,0,0,0 +units=m +no_defs",
+  ],
+]);
 
 function App() {
   // --- State Management ---
@@ -126,17 +144,85 @@ function App() {
       let features = [];
       try {
         if (extension === "csv") {
-          const lines = content.split("\n").slice(1);
-          lines.forEach((line) => {
-            const parts = line.split(",");
-            const lon = parseFloat(parts[0]);
-            const lat = parseFloat(parts[1]);
-            if (!isNaN(lon) && !isNaN(lat)) {
-              features.push(
-                new Feature({ geometry: new Point(fromLonLat([lon, lat])) })
-              );
-            }
-          });
+          const lines = content.split("\n");
+          const header = lines[0]
+            .toLowerCase()
+            .split(",")
+            .map((h) => h.trim().replace(/"/g, ""));
+          const dataLines = lines.slice(1).filter((line) => line.trim() !== "");
+
+          const getIndex = (name) => header.indexOf(name);
+          const lonIndex = getIndex("longitude");
+          const latIndex = getIndex("latitude");
+          const eastingIndex = getIndex("easting");
+          const northingIndex = getIndex("northing");
+          const zoneIndex = getIndex("zone");
+          const datumIndex = getIndex("datum");
+
+          if (lonIndex !== -1 && latIndex !== -1) {
+            dataLines.forEach((line) => {
+              const parts = line.split(",");
+              if (parts.length < header.length) return;
+              const properties = {};
+              header.forEach((h, i) => {
+                properties[h] = parts[i].trim();
+              });
+              const lon = parseFloat(parts[lonIndex]);
+              const lat = parseFloat(parts[latIndex]);
+              if (!isNaN(lon) && !isNaN(lat)) {
+                features.push(
+                  new Feature({
+                    geometry: new Point(fromLonLat([lon, lat])),
+                    ...properties,
+                  })
+                );
+              }
+            });
+          } else if (
+            eastingIndex !== -1 &&
+            northingIndex !== -1 &&
+            zoneIndex !== -1
+          ) {
+            dataLines.forEach((line) => {
+              const parts = line.split(",");
+              if (parts.length < header.length) return;
+              const properties = {};
+              header.forEach((h, i) => {
+                properties[h] = parts[i].trim();
+              });
+              const easting = parseFloat(parts[eastingIndex]);
+              const northing = parseFloat(parts[northingIndex]);
+              const zone = parseInt(parts[zoneIndex], 10);
+              const datumName =
+                datumIndex !== -1
+                  ? parts[datumIndex].trim().toLowerCase()
+                  : "wgs84";
+
+              if (!isNaN(easting) && !isNaN(northing) && !isNaN(zone)) {
+                let sourceProjection;
+                if (datumName.includes("indian")) {
+                  sourceProjection =
+                    zone === 47 ? "INDIAN1975_UTM47N" : "INDIAN1975_UTM48N";
+                } else {
+                  // Default to WGS84
+                  sourceProjection = zone === 47 ? "EPSG:32647" : "EPSG:32648";
+                }
+
+                const wgs84Coords = proj4(sourceProjection, "EPSG:4326", [
+                  easting,
+                  northing,
+                ]);
+                const mapCoords = fromLonLat(wgs84Coords);
+                features.push(
+                  new Feature({ geometry: new Point(mapCoords), ...properties })
+                );
+              }
+            });
+          } else {
+            throw new Error(
+              "CSV headers must include 'longitude,latitude' or 'easting,northing,zone'."
+            );
+          }
         } else if (extension === "kml") {
           const kmlFormat = new KML({
             extractStyles: true,
@@ -172,13 +258,11 @@ function App() {
           setImportedLayers((prevLayers) => [newLayer, ...prevLayers]);
           setActivePanel("layers");
         } else {
-          alert("No features found in the imported file.");
+          alert("No valid features found or file format is incorrect.");
         }
       } catch (error) {
         console.error("Error importing file:", error);
-        alert(
-          "Failed to import file. Please check the file format and content."
-        );
+        alert(`Failed to import file: ${error.message}`);
       }
     };
 

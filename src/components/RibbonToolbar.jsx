@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import { fromLonLat } from "ol/proj";
 import {
   Hand,
   MousePointer,
@@ -16,10 +17,7 @@ import {
   ScanSearch,
   Fullscreen,
   Target,
-  Map as StreetMapIcon,
-  Globe,
-  Mountain,
-  Image,
+  Map as BaseMapIcon,
   Clock,
   Edit,
   Upload,
@@ -36,6 +34,7 @@ const RibbonToolbar = ({
   setIsTimeSliderVisible,
   toggleHistoricalLayer,
   setIsImportModalVisible,
+  mapInstance,
   handleClearMap,
   handleZoomIn,
   handleZoomOut,
@@ -139,16 +138,6 @@ const RibbonToolbar = ({
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
-                icon={<Upload size={18} />}
-                label="Import Data"
-                onClick={() => setIsImportModalVisible(true)}
-              />
-            </div>
-            <div className="ribbon-group-title">Data</div>
-          </div>
-          <div className="ribbon-group">
-            <div className="ribbon-buttons">
-              <RibbonButton
                 icon={<Ruler size={18} />}
                 label="Distance"
                 toolName="measure-distance"
@@ -208,13 +197,24 @@ const RibbonToolbar = ({
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
-                icon={<StreetMapIcon size={18} />}
+                icon={<BaseMapIcon size={18} />}
                 label="Base Maps"
                 isActive={activePanel === "basemaps"}
                 onClick={() => handlePanelToggle("basemaps")}
               />
             </div>
             <div className="ribbon-group-title">Base Maps</div>
+          </div>
+          {/* --- Moved Import Data Button Here --- */}
+          <div className="ribbon-group">
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<Upload size={18} />}
+                label="Import Data"
+                onClick={() => setIsImportModalVisible(true)}
+              />
+            </div>
+            <div className="ribbon-group-title">Data</div>
           </div>
           <div className="ribbon-group">
             <div className="ribbon-buttons">
@@ -239,7 +239,7 @@ const RibbonToolbar = ({
                 icon={<Target size={18} />}
                 label="Buffer"
                 onClick={() => {
-                  /* Buffer logic needed in App.jsx */
+                  /* Buffer logic needed */
                 }}
               />
             </div>
