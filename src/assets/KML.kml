@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<kml xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:atom="http://www.w3.org/2005/Atom" xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<name>pao30-06-2024</name>
+<visibility>1</visibility>
+<Folder id="kml_ft_pao30-06-2024">
+<name>pao30-06-2024</name>
+<Placemark id="kml_1">
+<name>kml_1</name>
+<Style>
+<LineStyle>
+<color>ff0000ff</color>
+</LineStyle>
+</Style>
+<LineString>
+<coordinates>102.617219974498,17.882187311632,0.0 102.617171472083,17.8818800588973,0.0 102.617126017228,17.8815478443461,0.0 102.617170870856,17.8815065072818,0.0 102.617251376254,17.8812392252877,0.0 102.617340729386,17.8812327529474,0.0 102.617329388735,17.8814926368991,0.0 102.61726904695,17.8815030347166,0.0 102.617385845787,17.8821298659018,0.0 102.617219974498,17.882187311632,0.0</coordinates>
+</LineString>
+</Placemark>
+</Folder>
+</Document></kml>
