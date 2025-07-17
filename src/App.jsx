@@ -16,20 +16,37 @@ import Point from "ol/geom/Point";
 import { v4 as uuidv4 } from "uuid";
 import proj4 from "proj4";
 
-// Define common datums for the region
+// Define full projection systems including the new Lao 1997 datum
 proj4.defs([
-  ["EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs"], // WGS84 Geographic
-  // WGS84 UTM Zones
-  ["EPSG:32647", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs"],
-  ["EPSG:32648", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs"],
-  // Indian 1975 UTM Zones with specific transformation parameters for Thailand/Laos region
+  ["EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs"],
+  [
+    "EPSG:4240",
+    "+title=Indian 1975 +proj=longlat +ellps=evrst30 +towgs84=214,836,303,0,0,0,0 +no_defs",
+  ],
+  // New, more accurate definition for Lao 1997 based on your parameters
+  [
+    "EPSG:4674",
+    "+title=Lao 1997 +proj=longlat +ellps=krass +towgs84=-46.012,127.108,38.131,0,0,0,0 +no_defs",
+  ],
+
+  // Define UTM projections based on the datums
+  ["WGS84_UTM47N", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs"],
+  ["WGS84_UTM48N", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs"],
   [
     "INDIAN1975_UTM47N",
-    "+proj=utm +zone=47 +ellps=evrst30 +towgs84=206,836,295,0,0,0,0 +units=m +no_defs",
+    "+proj=utm +zone=47 +ellps=evrst30 +towgs84=214,836,303,0,0,0,0 +units=m +no_defs",
   ],
   [
     "INDIAN1975_UTM48N",
-    "+proj=utm +zone=48 +ellps=evrst30 +towgs84=206,836,295,0,0,0,0 +units=m +no_defs",
+    "+proj=utm +zone=48 +ellps=evrst30 +towgs84=214,836,303,0,0,0,0 +units=m +no_defs",
+  ],
+  [
+    "LAO1997_UTM47N",
+    "+proj=utm +zone=47 +ellps=krass +towgs84=-4.012,20.108,38.131,0,0,0,0 +units=m +no_defs",
+  ],
+  [
+    "LAO1997_UTM48N",
+    "+proj=utm +zone=48 +ellps=krass +towgs84=-4.012,20.108,38.131,0,0,0,0 +units=m +no_defs",
   ],
 ]);
 
@@ -190,6 +207,7 @@ function App() {
               header.forEach((h, i) => {
                 properties[h] = parts[i].trim();
               });
+
               const easting = parseFloat(parts[eastingIndex]);
               const northing = parseFloat(parts[northingIndex]);
               const zone = parseInt(parts[zoneIndex], 10);
@@ -200,12 +218,17 @@ function App() {
 
               if (!isNaN(easting) && !isNaN(northing) && !isNaN(zone)) {
                 let sourceProjection;
-                if (datumName.includes("indian")) {
+
+                if (datumName.includes("lao") || datumName.includes("97")) {
+                  sourceProjection =
+                    zone === 47 ? "LAO1997_UTM47N" : "LAO1997_UTM48N";
+                } else if (datumName.includes("indian")) {
                   sourceProjection =
                     zone === 47 ? "INDIAN1975_UTM47N" : "INDIAN1975_UTM48N";
                 } else {
                   // Default to WGS84
-                  sourceProjection = zone === 47 ? "EPSG:32647" : "EPSG:32648";
+                  sourceProjection =
+                    zone === 47 ? "WGS84_UTM47N" : "WGS84_UTM48N";
                 }
 
                 const wgs84Coords = proj4(sourceProjection, "EPSG:4326", [
