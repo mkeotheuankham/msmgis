@@ -601,3 +601,79 @@ body {
   border-radius: 4px;
   word-break: break-all;
 }
+
+/* --- Style Editor Modal Styles --- */
+.style-editor-panel {
+  width: 350px;
+}
+
+.style-group {
+  margin-bottom: 1.5rem;
+}
+
+.style-group:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.style-group h4 {
+  font-size: 0.9rem;
+  color: var(--color-accent-blue);
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.style-control {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.style-control label {
+  color: var(--color-text-muted);
+}
+
+.style-control input[type="color"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border: none;
+  width: 40px;
+  height: 25px;
+  cursor: pointer;
+  background-color: transparent;
+}
+.style-control input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.style-control input[type="color"]::-webkit-color-swatch {
+  border: 1px solid var(--color-dark-border-light);
+  border-radius: 4px;
+}
+.style-control input[type="color"]::-moz-color-swatch {
+  border: 1px solid var(--color-dark-border-light);
+  border-radius: 4px;
+}
+
+.style-control input[type="range"] {
+  width: 140px;
+  cursor: pointer;
+}
+
+.save-style-button {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--color-accent-blue);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 1rem;
+}
+.save-style-button:hover {
+  background-color: var(--color-accent-blue-dark);
+}

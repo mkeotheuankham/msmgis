@@ -6,13 +6,7 @@ import TileLayer from "ol/layer/Tile";
 import XYZ from "ol/source/XYZ";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
-import {
-  fromLonLat,
-  toLonLat,
-  transform,
-  METERS_PER_UNIT,
-  get as getProjection,
-} from "ol/proj";
+import { fromLonLat, toLonLat, transform, METERS_PER_UNIT } from "ol/proj"; // FIX: Removed unused 'getProjection'
 import { getCenter } from "ol/extent";
 import Point from "ol/geom/Point";
 import LineString from "ol/geom/LineString";
@@ -26,7 +20,7 @@ import Style from "ol/style/Style";
 import Fill from "ol/style/Fill";
 import Stroke from "ol/style/Stroke";
 import Text from "ol/style/Text";
-import CircleStyle from "ol/style/Circle"; // **FIX: Added missing import for CircleStyle**
+import CircleStyle from "ol/style/Circle";
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
 import TileWMS from "ol/source/TileWMS";
@@ -188,12 +182,12 @@ const MapComponent = ({
       const timeRange = `${firstDay}/${lastDay}`;
 
       const newHistoricalLayer = new TileLayer({
-        name: "Sentinel 2",
+        name: "historicalLayer",
         visible: true,
         source: new TileWMS({
-          url: "https://services.sentinel-hub.com/ogc/wms/5aadfeac-8c28-45a4-8f5e-d6341e60fab5",
+          url: "https://services.sentinel-hub.com/ogc/wms/1474cead-771e-410a-8d9d-0376f0376fc9",
           params: {
-            LAYERS: "2_TONEMAPPED_NATURAL_COLOR",
+            LAYERS: "1_TRUE_COLOR",
             TIME: timeRange,
             MAXCC: 80,
           },
@@ -226,11 +220,16 @@ const MapComponent = ({
         visible: layerData.visible,
         opacity: layerData.opacity,
         style: new Style({
-          fill: new Fill({ color: "rgba(255, 0, 255, 0.4)" }),
-          stroke: new Stroke({ color: "#ff00ff", width: 3 }),
+          fill: new Fill({
+            color: layerData.style?.fillColor || "rgba(255, 0, 255, 0.4)",
+          }),
+          stroke: new Stroke({
+            color: layerData.style?.strokeColor || "#ff00ff",
+            width: layerData.style?.strokeWidth || 3,
+          }),
           image: new CircleStyle({
-            radius: 7,
-            fill: new Fill({ color: "#ff00ff" }),
+            radius: layerData.style?.pointSize || 7,
+            fill: new Fill({ color: layerData.style?.pointColor || "#ff00ff" }),
           }),
         }),
       });
@@ -469,7 +468,8 @@ const MapComponent = ({
       case "draw-point":
       case "draw-line":
       case "draw-polygon":
-      case "draw-circle":
+      case "draw-circle": {
+        // **FIX: Added block scope for lexical declaration**
         const drawType = {
           "draw-point": "Point",
           "draw-line": "LineString",
@@ -483,8 +483,9 @@ const MapComponent = ({
         });
         olMap.current.addInteraction(drawInteractionRef.current);
         break;
+      }
 
-      case "edit":
+      case "edit": {
         selectInteractionRef.current = new Select({
           condition: click,
           layers: [vectorLayerRef.current],
@@ -496,6 +497,7 @@ const MapComponent = ({
         });
         olMap.current.addInteraction(modifyInteractionRef.current);
         break;
+      }
 
       case "identify":
         olMap.current.on("singleclick", identifyClickListener);

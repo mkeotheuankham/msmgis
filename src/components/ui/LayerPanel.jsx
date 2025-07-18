@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { Layers, ChevronDown, Trash2, ZoomIn, Eye, EyeOff } from "lucide-react";
+import {
+  Layers,
+  ChevronDown,
+  Trash2,
+  ZoomIn,
+  Eye,
+  EyeOff,
+  Palette,
+} from "lucide-react";
 import VectorSource from "ol/source/Vector";
 
 const SectionHeader = ({ title, icon: Icon, isExpanded, onToggle }) => (
@@ -30,7 +38,7 @@ const OpacitySlider = ({ opacity, onOpacityChange, disabled }) => (
   </div>
 );
 
-const LayerManager = ({ layers, setLayers, mapInstance }) => {
+const LayerManager = ({ layers, setLayers, mapInstance, onStyleEdit }) => {
   const handleVisibilityChange = (id, visible) => {
     setLayers((currentLayers) =>
       currentLayers.map((l) => (l.id === id ? { ...l, visible } : l))
@@ -73,6 +81,9 @@ const LayerManager = ({ layers, setLayers, mapInstance }) => {
               {layer.name}
             </span>
             <div className="layer-actions">
+              <button onClick={() => onStyleEdit(layer.id)} title="Edit Style">
+                <Palette size={16} />
+              </button>
               <button
                 onClick={() => handleVisibilityChange(layer.id, !layer.visible)}
                 title={layer.visible ? "Hide Layer" : "Show Layer"}
@@ -109,6 +120,7 @@ const LayerPanel = ({
   importedLayers,
   setImportedLayers,
   mapInstance,
+  onStyleEdit,
 }) => {
   const [isImportedLayersExpanded, setIsImportedLayersExpanded] =
     useState(true);
@@ -127,6 +139,7 @@ const LayerPanel = ({
             layers={importedLayers}
             setLayers={setImportedLayers}
             mapInstance={mapInstance}
+            onStyleEdit={onStyleEdit}
           />
         )}
       </div>

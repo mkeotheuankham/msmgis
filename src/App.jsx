@@ -7,6 +7,7 @@ import BaseMapPanel from "./components/ui/BaseMapPanel";
 import TimeSliderPanel from "./components/ui/TimeSliderPanel";
 import ImportDataModal from "./components/ui/ImportDataModal";
 import AttributePanel from "./components/ui/AttributePanel";
+import StyleEditorModal from "./components/ui/StyleEditorModal";
 import "./App.css";
 import shp from "shpjs";
 import { KML, GeoJSON } from "ol/format";
@@ -23,13 +24,10 @@ proj4.defs([
     "EPSG:4240",
     "+title=Indian 1975 +proj=longlat +ellps=evrst30 +towgs84=214,836,303,0,0,0,0 +no_defs",
   ],
-  // New, more accurate definition for Lao 1997 based on your parameters
   [
     "EPSG:4674",
     "+title=Lao 1997 +proj=longlat +ellps=krass +towgs84=-46.012,127.108,38.131,0,0,0,0 +no_defs",
   ],
-
-  // Define UTM projections based on the datums
   ["WGS84_UTM47N", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs"],
   ["WGS84_UTM48N", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs"],
   [
@@ -55,7 +53,7 @@ function App() {
   const [activeTool, setActiveTool] = useState("pan");
   const [activeTab, setActiveTab] = useState("home");
   const [mapInstance, setMapInstance] = useState(null);
-  const [activePanel, setActivePanel] = useState(null); // null, 'layers', or 'basemaps'
+  const [activePanel, setActivePanel] = useState(null);
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [importedLayers, setImportedLayers] = useState([]);
 
@@ -68,6 +66,9 @@ function App() {
   const [selectedDate, setSelectedDate] = useState("2024-01-01");
 
   const [selectedFeatureInfo, setSelectedFeatureInfo] = useState(null);
+
+  const [isStyleEditorVisible, setIsStyleEditorVisible] = useState(false);
+  const [stylingLayer, setStylingLayer] = useState(null);
 
   const [baseLayerStates, setBaseLayerStates] = useState({
     osm: { name: "Street Map", visible: true, opacity: 1 },
@@ -328,6 +329,21 @@ function App() {
     setSelectedFeatureInfo(null);
   };
 
+  const handleStyleEdit = (layerId) => {
+    const layerToStyle = importedLayers.find((l) => l.id === layerId);
+    if (layerToStyle) {
+      setStylingLayer(layerToStyle);
+      setIsStyleEditorVisible(true);
+    }
+  };
+
+  const handleStyleSave = (layerId, newStyle) => {
+    setImportedLayers((layers) =>
+      layers.map((l) => (l.id === layerId ? { ...l, style: newStyle } : l))
+    );
+    setIsStyleEditorVisible(false);
+  };
+
   return (
     <div className="app-container">
       <RibbonToolbar
@@ -364,6 +380,7 @@ function App() {
           importedLayers={importedLayers}
           setImportedLayers={setImportedLayers}
           mapInstance={mapInstance}
+          onStyleEdit={handleStyleEdit}
         />
         <BaseMapPanel
           isVisible={activePanel === "basemaps"}
@@ -386,6 +403,12 @@ function App() {
         info={selectedFeatureInfo}
         onClose={handleCloseAttributeInfo}
         map={mapInstance}
+      />
+      <StyleEditorModal
+        isVisible={isStyleEditorVisible}
+        layer={stylingLayer}
+        onClose={() => setIsStyleEditorVisible(false)}
+        onSave={handleStyleSave}
       />
       <StatusBar
         graticuleEnabled={graticuleEnabled}
