@@ -8,6 +8,7 @@ import TimeSliderPanel from "./components/ui/TimeSliderPanel";
 import ImportDataModal from "./components/ui/ImportDataModal";
 import AttributePanel from "./components/ui/AttributePanel";
 import StyleEditorModal from "./components/ui/StyleEditorModal";
+import ExportDataModal from "./components/ui/ExportDataModal"; // Import Export Modal
 import "./App.css";
 import shp from "shpjs";
 import { KML, GeoJSON } from "ol/format";
@@ -56,6 +57,7 @@ function App() {
   const [activePanel, setActivePanel] = useState(null);
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [importedLayers, setImportedLayers] = useState([]);
+  const [isExportModalVisible, setIsExportModalVisible] = useState(false);
 
   const [graticuleEnabled, setGraticuleEnabled] = useState(false);
   const [graticuleType, setGraticuleType] = useState("WGS84");
@@ -294,6 +296,81 @@ function App() {
     else reader.readAsText(file);
   };
 
+  const handleExportData = useCallback(
+    (layerId, format) => {
+      if (!mapInstance) return;
+      let featuresToExport = [];
+      if (layerId === "editorLayer") {
+        const editorLayer = getLayerByName("editorLayer");
+        if (editorLayer)
+          featuresToExport = editorLayer.getSource().getFeatures();
+      } else {
+        const importedLayer = importedLayers.find((l) => l.id === layerId);
+        if (importedLayer) featuresToExport = importedLayer.features;
+      }
+      if (featuresToExport.length === 0) {
+        alert("The selected layer has no features to export.");
+        return;
+      }
+      let data,
+        mimeType,
+        fileName = `export.${format}`;
+      try {
+        if (format === "geojson") {
+          const geoJsonFormat = new GeoJSON();
+          data = geoJsonFormat.writeFeatures(featuresToExport, {
+            dataProjection: "EPSG:4326",
+            featureProjection: "EPSG:3857",
+          });
+          mimeType = "application/json";
+        } else if (format === "kml") {
+          const kmlFormat = new KML();
+          data = kmlFormat.writeFeatures(featuresToExport, {
+            dataProjection: "EPSG:4326",
+            featureProjection: "EPSG:3857",
+          });
+          mimeType = "application/vnd.google-earth.kml+xml";
+        } else if (format === "csv") {
+          let csvContent = "longitude,latitude,";
+          const allProperties = new Set();
+          featuresToExport.forEach((f) =>
+            Object.keys(f.getProperties()).forEach(
+              (p) => p !== "geometry" && allProperties.add(p)
+            )
+          );
+          csvContent += Array.from(allProperties).join(",") + "\n";
+          featuresToExport.forEach((feature) => {
+            const geometry = feature.getGeometry();
+            if (geometry.getType() === "Point") {
+              const coords = toLonLat(geometry.getCoordinates());
+              let row = `${coords[0]},${coords[1]},`;
+              allProperties.forEach((prop) => {
+                const value = feature.get(prop) || "";
+                row += `"${String(value).replace(/"/g, '""')}",`;
+              });
+              csvContent += row.slice(0, -1) + "\n";
+            }
+          });
+          data = csvContent;
+          mimeType = "text/csv";
+        }
+        const blob = new Blob([data], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error("Error exporting data:", error);
+        alert(`Failed to export data: ${error.message}`);
+      }
+    },
+    [mapInstance, importedLayers, getLayerByName]
+  );
+
   const toggleHistoricalLayer = (isActive) => {
     setIsHistoricalLayerActive(isActive);
     if (mapInstance) {
@@ -357,6 +434,7 @@ function App() {
         setIsTimeSliderVisible={setIsTimeSliderVisible}
         toggleHistoricalLayer={toggleHistoricalLayer}
         setIsImportModalVisible={setIsImportModalVisible}
+        setIsExportModalVisible={setIsExportModalVisible} // Pass setter
         handleClearMap={handleClearMap}
         handleZoomIn={handleZoomIn}
         handleZoomOut={handleZoomOut}
@@ -393,6 +471,13 @@ function App() {
         isVisible={isImportModalVisible}
         onClose={() => setIsImportModalVisible(false)}
         onFileImport={handleFileImport}
+      />
+      <ExportDataModal
+        isVisible={isExportModalVisible}
+        onClose={() => setIsExportModalVisible(false)}
+        onExport={handleExportData}
+        mapInstance={mapInstance}
+        importedLayers={importedLayers}
       />
       <TimeSliderPanel
         isVisible={isTimeSliderVisible}
