@@ -172,3 +172,80 @@
 .save-style-button:hover {
   background-color: var(--color-accent-blue-dark);
 }
+
+/* --- Export Data Modal Styles --- */
+.export-data-modal {
+  width: 450px;
+}
+
+.export-group {
+  margin-bottom: 1.5rem;
+}
+
+.export-group h4 {
+  font-size: 0.9rem;
+  color: var(--color-accent-blue);
+  margin-bottom: 0.75rem;
+}
+
+.export-select {
+  width: 100%;
+  padding: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--color-dark-border-light);
+  border-radius: 4px;
+  color: var(--color-text-light);
+}
+
+.format-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.format-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 0.5rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--color-dark-border-light);
+  color: var(--color-text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.format-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-active);
+}
+
+.format-button.active {
+  background-color: var(--color-accent-blue);
+  border-color: var(--color-accent-blue-dark);
+  color: white;
+  font-weight: 600;
+}
+
+.export-action-button {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--color-accent-blue);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 1rem;
+}
+.export-action-button:hover {
+  background-color: var(--color-accent-blue-dark);
+}
+.export-action-button:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+}
