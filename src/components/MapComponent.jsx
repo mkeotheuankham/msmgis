@@ -244,21 +244,6 @@ const MapComponent = ({
 
       olMap.current.addLayer(vectorLayer);
     });
-
-    // **FIX**: Removed automatic zoom after import
-    /*
-      if (importedLayers.length > 0) {
-          const latestLayer = importedLayers[0];
-          if (latestLayer.features.length > 0) {
-              const source = new VectorSource({ features: latestLayer.features });
-              const extent = source.getExtent();
-              olMap.current.getView().fit(extent, {
-                  padding: [100, 100, 100, 100],
-                  duration: 1000,
-              });
-          }
-      }
-      */
   }, [importedLayers]);
 
   // --- Coordinate and Scale Display Effect ---

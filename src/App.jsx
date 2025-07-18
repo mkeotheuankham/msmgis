@@ -8,15 +8,17 @@ import TimeSliderPanel from "./components/ui/TimeSliderPanel";
 import ImportDataModal from "./components/ui/ImportDataModal";
 import AttributePanel from "./components/ui/AttributePanel";
 import StyleEditorModal from "./components/ui/StyleEditorModal";
-import ExportDataModal from "./components/ui/ExportDataModal"; // Import Export Modal
+import ExportDataModal from "./components/ui/ExportDataModal";
 import "./App.css";
 import shp from "shpjs";
 import { KML, GeoJSON } from "ol/format";
-import { fromLonLat, transform } from "ol/proj";
+import { fromLonLat, toLonLat, transform } from "ol/proj";
 import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
 import { v4 as uuidv4 } from "uuid";
 import proj4 from "proj4";
+import VectorSource from "ol/source/Vector";
+import { createEmpty, extend, isEmpty } from "ol/extent";
 
 // Define full projection systems including the new Lao 1997 datum
 proj4.defs([
@@ -112,16 +114,38 @@ function App() {
   }, [mapInstance]);
 
   const handleZoomToLayer = useCallback(() => {
-    if (mapInstance) {
-      const editorLayer = getLayerByName("editorLayer");
-      if (editorLayer && editorLayer.getSource().getFeatures().length > 0) {
-        mapInstance.getView().fit(editorLayer.getSource().getExtent(), {
-          padding: [50, 50, 50, 50],
-          duration: 1000,
-        });
+    if (!mapInstance) return;
+
+    const combinedExtent = createEmpty();
+
+    // 1. Get extent from all imported layers
+    importedLayers.forEach((layerData) => {
+      if (layerData.features && layerData.features.length > 0) {
+        const source = new VectorSource({ features: layerData.features });
+        extend(combinedExtent, source.getExtent());
+      }
+    });
+
+    // 2. Get extent from the editor (drawing) layer
+    const editorLayer = getLayerByName("editorLayer");
+    if (editorLayer) {
+      const editorSource = editorLayer.getSource();
+      if (editorSource.getFeatures().length > 0) {
+        extend(combinedExtent, editorSource.getExtent());
       }
     }
-  }, [mapInstance, getLayerByName]);
+
+    // 3. Fit view if the extent is valid and not empty
+    if (!isEmpty(combinedExtent)) {
+      mapInstance.getView().fit(combinedExtent, {
+        padding: [100, 100, 100, 100],
+        duration: 1000,
+        maxZoom: 19,
+      });
+    } else {
+      alert("No layers with features found to zoom to.");
+    }
+  }, [mapInstance, importedLayers, getLayerByName]);
 
   const handleFullExtent = useCallback(() => {
     if (mapInstance) {
@@ -229,7 +253,6 @@ function App() {
                   sourceProjection =
                     zone === 47 ? "INDIAN1975_UTM47N" : "INDIAN1975_UTM48N";
                 } else {
-                  // Default to WGS84
                   sourceProjection =
                     zone === 47 ? "WGS84_UTM47N" : "WGS84_UTM48N";
                 }
@@ -292,8 +315,11 @@ function App() {
       }
     };
 
-    if (extension === "zip") reader.readAsArrayBuffer(file);
-    else reader.readAsText(file);
+    if (extension === "zip") {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
   };
 
   const handleExportData = useCallback(
@@ -434,7 +460,7 @@ function App() {
         setIsTimeSliderVisible={setIsTimeSliderVisible}
         toggleHistoricalLayer={toggleHistoricalLayer}
         setIsImportModalVisible={setIsImportModalVisible}
-        setIsExportModalVisible={setIsExportModalVisible} // Pass setter
+        setIsExportModalVisible={setIsExportModalVisible}
         handleClearMap={handleClearMap}
         handleZoomIn={handleZoomIn}
         handleZoomOut={handleZoomOut}
