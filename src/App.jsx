@@ -42,11 +42,11 @@ proj4.defs([
   ],
   [
     "LAO1997_UTM47N",
-    "+proj=utm +zone=47 +ellps=krass +towgs84=-4.012,20.108,38.131,0,0,0,0 +units=m +no_defs",
+    "+proj=utm +zone=47 +ellps=krass +towgs84=-46.012,127.108,38.131,0,0,0,0 +units=m +no_defs",
   ],
   [
     "LAO1997_UTM48N",
-    "+proj=utm +zone=48 +ellps=krass +towgs84=-4.012,20.108,38.131,0,0,0,0 +units=m +no_defs",
+    "+proj=utm +zone=48 +ellps=krass +towgs84=-46.012,127.108,38.131,0,0,0,0 +units=m +no_defs",
   ],
 ]);
 
