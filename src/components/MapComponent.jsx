@@ -6,7 +6,13 @@ import TileLayer from "ol/layer/Tile";
 import XYZ from "ol/source/XYZ";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
-import { fromLonLat, toLonLat, transform, METERS_PER_UNIT } from "ol/proj"; // FIX: Removed unused 'getProjection'
+import {
+  fromLonLat,
+  toLonLat,
+  transform,
+  METERS_PER_UNIT,
+  get as getProjection,
+} from "ol/proj";
 import { getCenter } from "ol/extent";
 import Point from "ol/geom/Point";
 import LineString from "ol/geom/LineString";
@@ -239,17 +245,20 @@ const MapComponent = ({
       olMap.current.addLayer(vectorLayer);
     });
 
-    if (importedLayers.length > 0) {
-      const latestLayer = importedLayers[0];
-      if (latestLayer.features.length > 0) {
-        const source = new VectorSource({ features: latestLayer.features });
-        const extent = source.getExtent();
-        olMap.current.getView().fit(extent, {
-          padding: [100, 100, 100, 100],
-          duration: 1000,
-        });
+    // **FIX**: Removed automatic zoom after import
+    /*
+      if (importedLayers.length > 0) {
+          const latestLayer = importedLayers[0];
+          if (latestLayer.features.length > 0) {
+              const source = new VectorSource({ features: latestLayer.features });
+              const extent = source.getExtent();
+              olMap.current.getView().fit(extent, {
+                  padding: [100, 100, 100, 100],
+                  duration: 1000,
+              });
+          }
       }
-    }
+      */
   }, [importedLayers]);
 
   // --- Coordinate and Scale Display Effect ---
@@ -468,8 +477,7 @@ const MapComponent = ({
       case "draw-point":
       case "draw-line":
       case "draw-polygon":
-      case "draw-circle": {
-        // **FIX: Added block scope for lexical declaration**
+      case "draw-circle":
         const drawType = {
           "draw-point": "Point",
           "draw-line": "LineString",
@@ -483,9 +491,8 @@ const MapComponent = ({
         });
         olMap.current.addInteraction(drawInteractionRef.current);
         break;
-      }
 
-      case "edit": {
+      case "edit":
         selectInteractionRef.current = new Select({
           condition: click,
           layers: [vectorLayerRef.current],
@@ -497,7 +504,6 @@ const MapComponent = ({
         });
         olMap.current.addInteraction(modifyInteractionRef.current);
         break;
-      }
 
       case "identify":
         olMap.current.on("singleclick", identifyClickListener);
