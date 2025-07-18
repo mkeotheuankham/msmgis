@@ -1,4 +1,5 @@
 import React from "react";
+import "./Panels.css";
 import {
   Layers,
   Map as StreetMapIcon,

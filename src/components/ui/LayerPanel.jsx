@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import "./Panels.css";
 import {
   Layers,
   ChevronDown,

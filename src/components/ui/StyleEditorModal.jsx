@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import "./Modals.css";
 import { Palette, X } from "lucide-react";
 
 const StyleEditorModal = ({ layer, isVisible, onClose, onSave }) => {

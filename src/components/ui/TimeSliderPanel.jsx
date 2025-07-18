@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import "./Panels.css";
 import { Clock, Play, Pause } from "lucide-react";
 
 const styles = {

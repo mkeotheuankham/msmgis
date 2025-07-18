@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import "./Panels.css";
 import { X, Info } from "lucide-react";
 
 const AttributePanel = ({ info, onClose, map }) => {

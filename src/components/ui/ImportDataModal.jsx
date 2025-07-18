@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import "./Modals.css";
 import { Upload, FileText, FileJson, FileArchive, X } from "lucide-react";
 
 const styles = {

@@ -1,0 +1,122 @@
+/* === Ribbon Toolbar Styles === */
+.ribbon-toolbar {
+  background: var(--color-dark-surface);
+  border-bottom: 1px solid var(--color-dark-border);
+  padding: var(--spacing-sm) var(--spacing-md);
+  box-shadow: 0 2px var(--spacing-sm) var(--color-shadow);
+  z-index: 20;
+  position: relative;
+}
+
+.ribbon-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: var(--spacing-sm);
+}
+
+.ribbon-tab {
+  padding: 6px var(--spacing-lg);
+  background: rgba(40, 40, 40, 0.7);
+  border: 1px solid var(--color-dark-border-light);
+  border-bottom: none;
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+  transition: all var(--transition-speed);
+  border-top-left-radius: var(--border-radius-md);
+  border-top-right-radius: var(--border-radius-md);
+}
+
+.ribbon-tab.active {
+  background: var(--color-dark-surface-alt);
+  color: var(--color-text-active);
+  border-bottom: 1px solid var(--color-dark-surface-alt);
+  margin-bottom: -1px;
+}
+
+.ribbon-content {
+  display: flex;
+  padding: var(--spacing-sm) 0;
+  min-height: 80px;
+  border-top: 1px solid var(--color-dark-border);
+  background: var(--color-dark-surface-alt);
+  box-shadow: inset 0 1px var(--spacing-xs) var(--color-inner-shadow);
+}
+
+.tab-pane {
+  display: none;
+  width: 100%;
+  align-items: flex-start;
+  gap: var(--spacing-xl);
+}
+
+.tab-pane.active {
+  display: flex;
+}
+
+.ribbon-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: 0 var(--spacing-md);
+  border-right: 1px solid rgba(70, 70, 70, 0.7);
+  min-width: 80px;
+}
+
+.ribbon-group:last-child {
+  border-right: none;
+}
+
+.ribbon-group-title {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-darker-muted);
+  text-align: center;
+  margin-top: var(--spacing-xs);
+}
+
+.ribbon-buttons {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ribbon-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px var(--spacing-sm);
+  background: rgba(50, 50, 50, 0.6);
+  border: 1px solid rgba(80, 80, 80, 0.7);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  transition: all var(--transition-speed) var(--transition-ease);
+  min-width: 60px;
+  height: 55px;
+  text-align: center;
+}
+
+.ribbon-button:hover {
+  background: rgba(70, 70, 70, 0.8);
+  border-color: var(--color-accent-blue);
+  color: var(--color-text-active);
+}
+
+.ribbon-button.active {
+  background: linear-gradient(
+    to bottom,
+    var(--color-active-button-gradient-start),
+    var(--color-active-button-gradient-end)
+  );
+  border-color: var(--color-accent-blue-dark);
+  color: var(--color-text-active);
+  box-shadow: inset 0 1px var(--border-radius-sm) rgba(0, 0, 0, 0.3);
+}
+
+.ribbon-button span {
+  margin-top: 4px;
+  line-height: 1.2;
+}
