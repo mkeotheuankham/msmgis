@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import "./RibbonToolbar.css";
 import { fromLonLat } from "ol/proj";
 import {
   Hand,
@@ -22,7 +23,6 @@ import {
   Edit,
   Upload,
 } from "lucide-react";
-import "./RibbonToolbar.css"; // Import the component's CSS file
 
 const RibbonToolbar = ({
   activeTool,
@@ -139,16 +139,6 @@ const RibbonToolbar = ({
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
-                icon={<Upload size={18} />}
-                label="Import Data"
-                onClick={() => setIsImportModalVisible(true)}
-              />
-            </div>
-            <div className="ribbon-group-title">Data</div>
-          </div>
-          <div className="ribbon-group">
-            <div className="ribbon-buttons">
-              <RibbonButton
                 icon={<Ruler size={18} />}
                 label="Distance"
                 toolName="measure-distance"
@@ -216,6 +206,17 @@ const RibbonToolbar = ({
             </div>
             <div className="ribbon-group-title">Base Maps</div>
           </div>
+          {/* --- Moved Import Data Button Here --- */}
+          <div className="ribbon-group">
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<Upload size={18} />}
+                label="Import Data"
+                onClick={() => setIsImportModalVisible(true)}
+              />
+            </div>
+            <div className="ribbon-group-title">Data</div>
+          </div>
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
@@ -239,7 +240,7 @@ const RibbonToolbar = ({
                 icon={<Target size={18} />}
                 label="Buffer"
                 onClick={() => {
-                  /* Buffer logic needed in App.jsx */
+                  /* Buffer logic needed */
                 }}
               />
             </div>

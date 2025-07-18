@@ -191,9 +191,9 @@ const MapComponent = ({
         name: "historicalLayer",
         visible: true,
         source: new TileWMS({
-          url: "https://services.sentinel-hub.com/ogc/wms/1474cead-771e-410a-8d9d-0376f0376fc9",
+          url: "https://services.sentinel-hub.com/ogc/wms/5aadfeac-8c28-45a4-8f5e-d6341e60fab5",
           params: {
-            LAYERS: "1_TRUE_COLOR",
+            LAYERS: "2_TONEMAPPED_NATURAL_COLOR",
             TIME: timeRange,
             MAXCC: 80,
           },
