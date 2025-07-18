@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import "./RibbonToolbar.css";
 import { fromLonLat } from "ol/proj";
 import {
   Hand,
@@ -22,7 +21,9 @@ import {
   Clock,
   Edit,
   Upload,
+  Download,
 } from "lucide-react";
+import "./RibbonToolbar.css";
 
 const RibbonToolbar = ({
   activeTool,
@@ -35,6 +36,7 @@ const RibbonToolbar = ({
   setIsTimeSliderVisible,
   toggleHistoricalLayer,
   setIsImportModalVisible,
+  setIsExportModalVisible, // Add this prop
   mapInstance,
   handleClearMap,
   handleZoomIn,
@@ -206,13 +208,18 @@ const RibbonToolbar = ({
             </div>
             <div className="ribbon-group-title">Base Maps</div>
           </div>
-          {/* --- Moved Import Data Button Here --- */}
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
                 icon={<Upload size={18} />}
                 label="Import Data"
                 onClick={() => setIsImportModalVisible(true)}
+              />
+              {/* **FIX**: Added Export Data button back */}
+              <RibbonButton
+                icon={<Download size={18} />}
+                label="Export Data"
+                onClick={() => setIsExportModalVisible(true)}
               />
             </div>
             <div className="ribbon-group-title">Data</div>
