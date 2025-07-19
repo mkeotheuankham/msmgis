@@ -9,6 +9,7 @@ import ImportDataModal from "./components/ui/ImportDataModal";
 import AttributePanel from "./components/ui/AttributePanel";
 import StyleEditorModal from "./components/ui/StyleEditorModal";
 import ExportDataModal from "./components/ui/ExportDataModal";
+import CoordinateBar from "./components/ui/CoordinateBar"; // ນຳເຂົ້າ CoordinateBar
 import "./App.css";
 import shp from "shpjs";
 import { KML, GeoJSON } from "ol/format";
@@ -492,6 +493,7 @@ function App() {
           onBaseMapChange={handleBaseMapChange}
           onBaseMapOpacityChange={handleBaseMapOpacityChange}
         />
+        <CoordinateBar map={mapInstance} />
       </div>
       <ImportDataModal
         isVisible={isImportModalVisible}

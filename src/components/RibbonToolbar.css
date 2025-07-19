@@ -1,91 +1,104 @@
-/* === Ribbon Toolbar Styles === */
+/* === Styles ສຳລັບ Ribbon Toolbar (ແຖບເຄື່ອງມືຫຼັກ) === */
+
+/* Style ສຳລັບ container ຫຼັກຂອງ toolbar */
 .ribbon-toolbar {
-  background: var(--color-dark-surface);
-  border-bottom: 1px solid var(--color-dark-border);
-  padding: var(--spacing-sm) var(--spacing-md);
-  box-shadow: 0 2px var(--spacing-sm) var(--color-shadow);
-  z-index: 20;
-  position: relative;
+  background: var(--color-dark-surface); /* ຕັ້ງສີພື້ນຫຼັງໂດຍໃຊ້ຕົວແປ */
+  border-bottom: 1px solid var(--color-dark-border); /* ເພີ່ມເສັ້ນຂອບດ້ານລຸ່ມ */
+  padding: var(--spacing-sm) var(--spacing-md); /* ຕັ້ງຄ່າ padding ພາຍໃນ */
+  box-shadow: 0 2px var(--spacing-sm) var(--color-shadow); /* ເພີ່ມເງົາໃຫ້ดูมีมิติ */
+  z-index: 20; /* ຕັ້ງຄ່າ z-index ເພື່ອໃຫ້ toolbar ຢູ່ຊັ້ນເທິງ */
+  position: relative; /* ຕັ້ງຄ່າ position */
 }
 
+/* Style ສຳລັບ container ຂອງແຖບ (tabs) ເຊັ່ນ: Home, Map, Analysis */
 .ribbon-tabs {
-  display: flex;
-  gap: 0;
-  margin-bottom: var(--spacing-sm);
+  display: flex; /* ໃຊ້ Flexbox layout */
+  gap: 0; /* ບໍ່ມີຊ່ອງຫວ່າງລະຫວ່າງແຖບ */
+  margin-bottom: var(--spacing-sm); /* ຕັ້ງຄ່າ margin ດ້ານລຸ່ມ */
 }
 
+/* Style ສຳລັບແຕ່ລະແຖບ */
 .ribbon-tab {
   padding: 6px var(--spacing-lg);
   background: rgba(40, 40, 40, 0.7);
   border: 1px solid var(--color-dark-border-light);
-  border-bottom: none;
-  cursor: pointer;
+  border-bottom: none; /* ບໍ່ສະແດງເສັ້ນຂອບດ້ານລຸ່ມ */
+  cursor: pointer; /* ປ່ຽນ cursor ເປັນຮູບມືເມື່ອชี้ */
   font-size: var(--font-size-md);
   color: var(--color-text-muted);
-  transition: all var(--transition-speed);
-  border-top-left-radius: var(--border-radius-md);
-  border-top-right-radius: var(--border-radius-md);
+  transition: all var(--transition-speed); /* ເພີ່ມ animation ເວລາມີການປ່ຽນແປງ */
+  border-top-left-radius: var(--border-radius-md); /* ເຮັດໃຫ້ມູມຊ້າຍເທິງມົນ */
+  border-top-right-radius: var(--border-radius-md); /* ເຮັດໃຫ້ມູມຂວາເທິງມົນ */
 }
 
+/* Style ສຳລັບແຖບທີ່ກຳລັງຖືກເລືອກ (active) */
 .ribbon-tab.active {
   background: var(--color-dark-surface-alt);
   color: var(--color-text-active);
-  border-bottom: 1px solid var(--color-dark-surface-alt);
-  margin-bottom: -1px;
+  border-bottom: 1px solid var(--color-dark-surface-alt); /* ເພີ່ມເສັ້ນຂອບລຸ່ມສີດຽວກັບພື້ນຫຼັງເພື່ອໃຫ້ເບິ່ງເຊື່ອມຕໍ່ກັນ */
+  margin-bottom: -1px; /* ດຶງແຖບລົງມາ 1px ເພື່ອໃຫ້ເສັ້ນຂອບຊ້ອນກັນ */
 }
 
+/* Style ສຳລັບ container ຂອງເນື້ອຫາພາຍໃນແຖບ */
 .ribbon-content {
   display: flex;
   padding: var(--spacing-sm) 0;
-  min-height: 80px;
+  min-height: 80px; /* ຄວາມສູງຂັ້ນຕ່ຳ */
   border-top: 1px solid var(--color-dark-border);
   background: var(--color-dark-surface-alt);
-  box-shadow: inset 0 1px var(--spacing-xs) var(--color-inner-shadow);
+  box-shadow: inset 0 1px var(--spacing-xs) var(--color-inner-shadow); /* ເພີ່ມເງົາດ້ານໃນ */
 }
 
+/* Style ສຳລັບແຕ່ລະ pane ຂອງເນື້ອຫາ (ຈະສະແດງເທື່ອລະ pane) */
 .tab-pane {
-  display: none;
+  display: none; /* ເຊື່ອງໄວ້ເປັນຄ່າເລີ່ມຕົ້ນ */
   width: 100%;
-  align-items: flex-start;
-  gap: var(--spacing-xl);
+  align-items: flex-start; /* ຈັດເນື້ອຫາໃຫ້ເລີ່ມຈາກດ້ານເທິງ */
+  gap: var(--spacing-xl); /* ຊ່ອງຫວ່າງລະຫວ່າງກຸ່ມເຄື່ອງມື */
 }
 
+/* Style ສຳລັບ pane ທີ່ກຳລັງ active (ໃຫ້ສະແດງຜົນ) */
 .tab-pane.active {
-  display: flex;
+  display: flex; /* ປ່ຽນເປັນ flex ເພື່ອສະແດງຜົນ */
 }
 
+/* Style ສຳລັບແຕ່ລະກຸ່ມຂອງເຄື່ອງມື (ເຊັ່ນ: Map Tools, Draw, Measure) */
 .ribbon-group {
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* ຈັດລຽງປຸ່ມ ແລະ ຫົວຂໍ້ຕາມແນວຕັ້ງ */
   gap: var(--spacing-xs);
   padding: 0 var(--spacing-md);
-  border-right: 1px solid rgba(70, 70, 70, 0.7);
-  min-width: 80px;
+  border-right: 1px solid rgba(70, 70, 70, 0.7); /* ເພີ່ມເສັ້ນຂັ້ນລະຫວ່າງກຸ່ມ */
+  min-width: 80px; /* ຄວາມກວ້າງຂັ້ນຕ່ຳ */
 }
 
+/* ລຶບເສັ້ນຂັ້ນຂອງກຸ່ມສຸດທ້າຍອອກ */
 .ribbon-group:last-child {
   border-right: none;
 }
 
+/* Style ສຳລັບຫົວຂໍ້ຂອງກຸ່ມເຄື່ອງມື */
 .ribbon-group-title {
   font-size: var(--font-size-xs);
   color: var(--color-text-darker-muted);
-  text-align: center;
+  text-align: center; /* ຈັດກາງ */
   margin-top: var(--spacing-xs);
 }
 
+/* Style ສຳລັບ container ຂອງປຸ່ມຕ່າງໆໃນກຸ່ມ */
 .ribbon-buttons {
   display: flex;
   gap: var(--spacing-xs);
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-wrap: wrap; /* ໃຫ້ປຸ່ມຕັດຂຶ້ນແຖວໃໝ່ຖ້າພື້ນທີ່ບໍ່ພໍ */
+  justify-content: center; /* ຈັດປຸ່ມຢູ່ກາງ */
 }
 
+/* Style ສຳລັບແຕ່ລະປຸ່ມເຄື່ອງມື */
 .ribbon-button {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column; /* ຈັດ icon ແລະ text ຕາມແນວຕັ້ງ */
+  align-items: center; /* ຈັດກາງຕາມແນວນອນ */
+  justify-content: center; /* ຈັດກາງຕາມແນວຕັ້ງ */
   padding: 6px var(--spacing-sm);
   background: rgba(50, 50, 50, 0.6);
   border: 1px solid rgba(80, 80, 80, 0.7);
@@ -99,24 +112,27 @@
   text-align: center;
 }
 
+/* Style ຂອງປຸ່ມເມື່ອเอาเมาส์ไปวาง (hover) */
 .ribbon-button:hover {
   background: rgba(70, 70, 70, 0.8);
   border-color: var(--color-accent-blue);
   color: var(--color-text-active);
 }
 
+/* Style ຂອງປຸ່ມເມື່ອຖືກເລືອກ (active) */
 .ribbon-button.active {
   background: linear-gradient(
     to bottom,
     var(--color-active-button-gradient-start),
     var(--color-active-button-gradient-end)
-  );
+  ); /* ໃຊ້ສີແບບไล่เฉด (gradient) */
   border-color: var(--color-accent-blue-dark);
   color: var(--color-text-active);
-  box-shadow: inset 0 1px var(--border-radius-sm) rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px var(--border-radius-sm) rgba(0, 0, 0, 0.3); /* ເພີ່ມເງົາດ້ານໃນ */
 }
 
+/* Style ສຳລັບຂໍ້ຄວາມ (span) ພາຍໃນປຸ່ມ */
 .ribbon-button span {
-  margin-top: 4px;
-  line-height: 1.2;
+  margin-top: 4px; /* ຍະຫ່າງຈາກ icon */
+  line-height: 1.2; /* ຄວາມສູງຂອງແຖວ */
 }

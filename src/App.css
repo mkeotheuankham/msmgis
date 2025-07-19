@@ -1,24 +1,45 @@
+/* :root selector ໃຊ້ເພື່ອປະກາດຕົວແປ CSS (CSS variables) ທີ່ສາມາດເອີ້ນໃຊ້ໄດ້ທົ່ວທັງເອກະສານ. */
 :root {
-  /* Color Palette */
-  --color-dark-background: #1a1a1a;
-  --color-dark-surface: rgba(30, 30, 30, 0.9);
-  --color-dark-surface-alt: #252526;
-  --color-dark-border: rgba(60, 60, 60, 0.8);
-  --color-dark-border-light: rgba(70, 70, 70, 0.8);
-  --color-text-light: #e0e0e0;
-  --color-text-muted: #b0b0b0;
-  --color-text-darker-muted: #909090;
-  --color-text-active: #ffffff;
-  --color-text-coordinates: #9aff9a;
-  --color-accent-blue: #0099ff;
-  --color-accent-blue-dark: #0078d4;
-  --color-active-button-gradient-start: rgba(0, 153, 255, 0.7);
-  --color-active-button-gradient-end: rgba(0, 102, 204, 0.7);
-  --color-overlay-background: rgba(10, 10, 10, 0.9);
-  --color-shadow: rgba(0, 0, 0, 0.4);
-  --color-inner-shadow: rgba(0, 0, 0, 0.2);
+  /* Color Palette: ກຸ່ມຂອງຕົວແປສີສຳລັບ theme ຂອງແອັບ */
+  --color-dark-background: #1a1a1a; /* ສີພື້ນຫຼັງຫຼັກ (ສີດຳເຂັ້ມ) */
+  --color-dark-surface: rgba(
+    30,
+    30,
+    30,
+    0.9
+  ); /* ສີພື້ນຜິວຂອງ components (ເຊັ່ນ: toolbar, panel) */
+  --color-dark-surface-alt: #252526; /* ສີພື້ນຜິວສຳຮອງ */
+  --color-dark-border: rgba(60, 60, 60, 0.8); /* ສີຂອບ (border) */
+  --color-dark-border-light: rgba(70, 70, 70, 0.8); /* ສີຂອບທີ່ອ່ອນກວ່າ */
+  --color-text-light: #e0e0e0; /* ສີຕົວໜັງສືຫຼັກ (ສີຂາວອ່ອນ) */
+  --color-text-muted: #b0b0b0; /* ສີຕົວໜັງສືສຳຮອງ (ສີເທົາ) */
+  --color-text-darker-muted: #909090; /* ສີຕົວໜັງສືສຳຮອງທີ່ເຂັ້ມກວ່າ */
+  --color-text-active: #ffffff; /* ສີຕົວໜັງສືເມື່ອມີການใช้งาน (active) */
+  --color-text-coordinates: #9aff9a; /* ສີຕົວໜັງສືສະເພາະສຳລັບສະແດງພິກັດ (ສີຂຽວອ່ອນ) */
+  --color-accent-blue: #0099ff; /* ສີຫຼັກທີ່ໃຊ້ເນັ້ນ (ສີຟ້າ) */
+  --color-accent-blue-dark: #0078d4; /* ສີຟ້າທີ່ເຂັ້ມກວ່າ */
+  --color-active-button-gradient-start: rgba(
+    0,
+    153,
+    255,
+    0.7
+  ); /* ສີເລີ່ມຕົ້ນຂອງ gradient ສຳລັບປຸ່ມ active */
+  --color-active-button-gradient-end: rgba(
+    0,
+    102,
+    204,
+    0.7
+  ); /* ສີສິ້ນສຸດຂອງ gradient ສຳລັບປຸ່ມ active */
+  --color-overlay-background: rgba(
+    10,
+    10,
+    10,
+    0.9
+  ); /* ສີພື້ນຫຼັງຂອງ element ທີ່ລอยทับ (overlay) */
+  --color-shadow: rgba(0, 0, 0, 0.4); /* ສີຂອງເງົາ (shadow) */
+  --color-inner-shadow: rgba(0, 0, 0, 0.2); /* ສີຂອງເງົາດ້ານໃນ (inner shadow) */
 
-  /* Spacing */
+  /* Spacing: ກຸ່ມຂອງຕົວແປໄລຍະຫ່າງ (margin, padding) */
   --spacing-xxs: 2px;
   --spacing-xs: 4px;
   --spacing-sm: 8px;
@@ -26,85 +47,94 @@
   --spacing-lg: 16px;
   --spacing-xl: 20px;
 
-  /* Border Radius */
+  /* Border Radius: ກຸ່ມຂອງຕົວແປຄວາມโค้งมนຂອງຂອບ */
   --border-radius-sm: 3px;
   --border-radius-md: 4px;
 
-  /* Font Sizes */
+  /* Font Sizes: ກຸ່ມຂອງຕົວແປຂະໜາດຕົວໜັງສື */
   --font-size-xs: 10px;
   --font-size-sm: 11px;
   --font-size-md: 12px;
 
-  /* Transitions */
-  --transition-speed: 0.2s;
-  --transition-ease: ease-in-out;
+  /* Transitions: ກຸ່ມຂອງຕົວແປສຳລັບການເຄື່ອນໄຫວ (animation) */
+  --transition-speed: 0.2s; /* ຄວາມໄວ */
+  --transition-ease: ease-in-out; /* ຮູບแบบการเคลื่อนไหว */
 }
 
+/* Universal selector (*): ນຳໃຊ້ style ນີ້ກັບທຸກ element ໃນໜ້າเว็บ */
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+  margin: 0; /* ລຶບ margin ທີ່ browser ຕັ້ງມາເປັນຄ່າເລີ່ມຕົ້ນ */
+  padding: 0; /* ລຶບ padding ທີ່ browser ຕັ້ງມາເປັນຄ່າເລີ່ມຕົ້ນ */
+  box-sizing: border-box; /* ປ່ຽນວິທີການຄິດໄລ່ຂະໜາດຂອງกล่อง (box model) ໃຫ້ລວມ padding ແລະ border ເຂົ້າໄປໃນ width ແລະ height */
 }
 
+/* Style ສຳລັບ <body> element */
 body {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: var(--color-dark-background);
-  overflow: hidden;
-  color: var(--color-text-light);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; /* ກຳນົດ font ຫຼັກ */
+  background: var(--color-dark-background); /* ຕັ້ງສີພື້ນຫຼັງໂດຍໃຊ້ຕົວແປ */
+  overflow: hidden; /* ເຊື່ອງ scrollbar ຂອງໜ້າเว็บ */
+  color: var(--color-text-light); /* ຕັ້ງສີຕົວໜັງສືຫຼັກ */
 }
 
+/* Style ສຳລັບ container ຫຼັກຂອງແອັບ */
 .app-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
+  height: 100vh; /* ຄວາມສູງເຕັມຈໍ */
+  display: flex; /* ໃຊ້ Flexbox layout */
+  flex-direction: column; /* ຈັດเรียง components ຕາມແນວຕັ້ງ */
 }
 
+/* Style ສຳລັບສ່ວນເນື້ອຫາຫຼັກ (map area) */
 .main-content {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
+  flex: 1; /* ໃຫ້ element ນີ້ຂະຫຍາຍເຕັມพื้นที่ที่เหลือ */
+  overflow: hidden; /* ເຊື່ອງສ່ວນທີ່เกินขอบเขต */
+  position: relative; /* ຕັ້ງ position ເພື່ອໃຫ້ child elements ທີ່ເປັນ absolute ຍຶດຕິດກັບ element ນີ້ */
 }
 
-/* Map Container & OpenLayers specific styles */
+/* Styles ສະເພາະສ່ວນຂອງແຜນທີ່ ແລະ OpenLayers */
 .map-container {
-  width: 100%;
-  height: 100%;
+  width: 100%; /* ຄວາມກວ້າງເຕັມ */
+  height: 100%; /* ຄວາມສູງເຕັມ */
   position: relative;
   overflow: hidden;
 }
 
+/* Style ສຳລັບ element ທີ່ໃຊ້ສະແດງແຜນທີ່ */
 #map {
   width: 100%;
   height: 100%;
-  background-color: #222;
+  background-color: #222; /* ສີພື້ນຫຼັງຂອງແຜນທີ່ກ່ອນທີ່ tile ຈະໂຫຼດ */
 }
 
+/* ເຊື່ອງປຸ່ມ zoom ທີ່ມາພ້ອມກັບ OpenLayers (ເພາະເຮົາສ້າງເອງ) */
 .ol-zoom {
   display: none;
 }
 
+/* Style ສຳລັບຂໍ້ຄວາມສະແດງທີ່ມາຂອງຂໍ້ມູນ (attribution) ຂອງ OpenLayers */
 .ol-attribution {
-  bottom: 25px;
+  bottom: 25px; /* ຕຳແໜ່ງຈາກດ້ານລຸ່ມ */
   color: var(--color-text-muted);
   background: rgba(30, 30, 30, 0.6);
   border-top-left-radius: var(--border-radius-md);
   padding: var(--spacing-xxs) var(--spacing-sm);
-  box-shadow: 0 -2px 5px var(--color-shadow);
+  box-shadow: 0 -2px 5px var(--color-shadow); /* ເພີ່ມເງົາດ້ານເທິງ */
 }
 
+/* Style ສຳລັບ tooltip (ຂໍ້ຄວາມທີ່ສະແດງເມື່ອเอาเมาส์ชี้) */
 .tooltip {
-  position: relative;
+  position: relative; /* ຕັ້ງ position */
   background: var(--color-overlay-background);
   border-radius: var(--border-radius-md);
   color: var(--color-text-active);
   padding: var(--spacing-xs) var(--spacing-sm);
   opacity: 0.9;
-  white-space: nowrap;
+  white-space: nowrap; /* ບໍ່ໃຫ້ຕັດຄຳຂຶ້ນແຖວໃໝ່ */
   font-size: var(--font-size-md);
-  pointer-events: none;
+  pointer-events: none; /* ບໍ່ໃຫ້ tooltip รับ event ຂອງเมาส์ */
   box-shadow: 0 2px 5px var(--color-shadow);
 }
 
+/* Style ສຳລັບສ້າງຫົວລູກສອນชี้ลงດ້ານລຸ່ມຂອງ tooltip */
 .tooltip:before {
   content: "";
   position: absolute;

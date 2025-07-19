@@ -1,5 +1,8 @@
+// ນຳເຂົ້າ React hooks ທີ່ຈຳເປັນ
 import React, { useState, useCallback, useEffect, useRef } from "react";
+// ນຳເຂົ້າ function ຈາກ OpenLayers (ບໍ່ໄດ້ໃຊ້ໃນໄຟລ໌ນີ້ໂດຍກົງ ແຕ່ອາດຈະຈຳເປັນໃນອະນາຄົດ)
 import { fromLonLat } from "ol/proj";
+// ນຳເຂົ້າ icons ຕ່າງໆຈາກ library lucide-react ເພື່ອໃຊ້ໃນປຸ່ມຕ່າງໆ
 import {
   Hand,
   MousePointer,
@@ -23,53 +26,69 @@ import {
   Upload,
   Download,
 } from "lucide-react";
+// ນຳເຂົ້າ CSS file ສຳລັບ component ນີ້
 import "./RibbonToolbar.css";
 
+// ສ້າງ functional component ຊື່ RibbonToolbar
+// Component ນີ້ຮັບ props ຕ່າງໆຈາກ App.jsx ເພື່ອຈັດການ state ແລະ event handlers
 const RibbonToolbar = ({
-  activeTool,
-  setActiveTool,
-  activeTab,
-  setActiveTab,
-  activePanel,
-  setActivePanel,
-  isTimeSliderVisible,
-  setIsTimeSliderVisible,
-  toggleHistoricalLayer,
-  setIsImportModalVisible,
-  setIsExportModalVisible, // Add this prop
-  mapInstance,
-  handleClearMap,
-  handleZoomIn,
-  handleZoomOut,
-  handleZoomToLayer,
-  handleFullExtent,
+  activeTool, // ເຄື່ອງມືທີ່ກຳລັງໃຊ້ງານຢູ່
+  setActiveTool, // function ສຳລັບປ່ຽນ activeTool
+  activeTab, // ແຖບທີ່ກຳລັງເປີດຢູ່ (home, map, analysis)
+  setActiveTab, // function ສຳລັບປ່ຽນ activeTab
+  activePanel, // ແຜງດ້ານຂ້າງທີ່ກຳລັງເປີດຢູ່ (layers, basemaps)
+  setActivePanel, // function ສຳລັບເປີດ/ປິດ activePanel
+  isTimeSliderVisible, // ສະຖານະການເບິ່ງເຫັນຂອງແຖບເລື່ອນເວລາ
+  setIsTimeSliderVisible, // function ສຳລັບປ່ຽນ isTimeSliderVisible
+  toggleHistoricalLayer, // function ສຳລັບເປີດ/ປິດ historical layer
+  setIsImportModalVisible, // function ສຳລັບເປີດ modal ນຳເຂົ້າຂໍ້ມູນ
+  setIsExportModalVisible, // function ສຳລັບເປີດ modal ສົ່ງອອກຂໍ້ມູນ
+  mapInstance, // instance ຂອງແຜນທີ່ OpenLayers
+  handleClearMap, // function ສຳລັບລ້າງແຜນທີ່
+  handleZoomIn, // function ສຳລັບຊູມເຂົ້າ
+  handleZoomOut, // function ສຳລັບຊູມອອກ
+  handleZoomToLayer, // function ສຳລັບຊູມໄປຫາ layer
+  handleFullExtent, // function ສຳລັບຊູມໄປຫາຂອບເຂດເລີ່ມຕົ້ນ
 }) => {
+  // Function ຈັດການການຄລິກແຖບ (tab)
   const handleTabClick = (tab) => setActiveTab(tab);
+
+  // Function ຈັດການການຄລິກເຄື່ອງມື (tool)
+  // ໃຊ້ useCallback ເພື່ອປ້ອງກັນການສ້າງ function ໃໝ່ທຸກຄັ້ງທີ່ re-render, ຊ່ວຍເພີ່ມປະສິດທິພາບ
   const handleToolClick = useCallback(
     (tool) => setActiveTool(tool),
-    [setActiveTool]
+    [setActiveTool] // dependency array: function ຈະຖືກສ້າງໃໝ່ເມື່ອ setActiveTool ປ່ຽນ
   );
 
+  // Function ເປີດ/ປິດແຜງດ້ານຂ້າງ (Layer Panel, Base Map Panel)
   const handlePanelToggle = (panelName) => {
+    // ຖ້າຄລິກແຜງທີ່ເປີດຢູ່ແລ້ວ, ໃຫ້ປິດມັນ (ຕັ້ງເປັນ null). ຖ້າບໍ່, ໃຫ້ເປີດແຜງນັ້ນ.
     setActivePanel((prev) => (prev === panelName ? null : panelName));
   };
 
+  // ສ້າງ sub-component ພາຍໃນຊື່ RibbonButton ເພື່ອໃຊ້ซ้ำ
+  // ເປັນ component ສຳລັບສ້າງປຸ່ມໃນແຖບເຄື່ອງມື
   const RibbonButton = ({ icon, label, toolName, onClick, isActive }) => {
+    // ກວດສອບວ່າປຸ່ມນີ້ຄວນຈະຢູ່ໃນສະຖານະ "active" ຫຼືບໍ່
     const buttonIsActive = isActive || activeTool === toolName;
     return (
       <button
+        // ຕັ້ງ class ແບບ dynamic: ຖ້າປຸ່ມ active, ຈະເພີ່ມ class "active"
         className={`ribbon-button ${buttonIsActive ? "active" : ""}`}
+        // ຕັ້ງ event onClick: ຖ້າມີ prop onClick ສົ່ງມາ, ໃຫ້ໃຊ້ function ນັ້ນ. ຖ້າບໍ່, ໃຫ້ໃຊ້ handleToolClick.
         onClick={onClick || (() => handleToolClick(toolName))}
-        title={label}
+        title={label} // ສະແດງ label ເປັນ tooltip
       >
-        {icon}
-        <span>{label}</span>
+        {icon} {/* ສະແດງ icon ທີ່ສົ່ງມາຜ່ານ prop */}
+        <span>{label}</span> {/* ສະແດງຊື່ປຸ່ມ */}
       </button>
     );
   };
 
+  // ສ່ວນຂອງ UI ທີ່ component ຈະ render ອອກມາ
   return (
     <div className="ribbon-toolbar">
+      {/* ສ່ວນຂອງແຖບ (Tabs) */}
       <div className="ribbon-tabs">
         <button
           className={`ribbon-tab ${activeTab === "home" ? "active" : ""}`}
@@ -91,7 +110,9 @@ const RibbonToolbar = ({
         </button>
       </div>
 
+      {/* ສ່ວນຂອງເນື້ອຫາໃນແຕ່ລະແຖບ */}
       <div className="ribbon-content">
+        {/* ເນື້ອຫາຂອງແຖບ Home (ຈະສະແດງເມື່ອ activeTab === 'home') */}
         <div className={`tab-pane ${activeTab === "home" ? "active" : ""}`}>
           <div className="ribbon-group">
             <div className="ribbon-buttons">
@@ -160,6 +181,7 @@ const RibbonToolbar = ({
           </div>
         </div>
 
+        {/* ເນື້ອຫາຂອງແຖບ Map (ຈະສະແດງເມື່ອ activeTab === 'map') */}
         <div className={`tab-pane ${activeTab === "map" ? "active" : ""}`}>
           <div className="ribbon-group">
             <div className="ribbon-buttons">
@@ -215,7 +237,6 @@ const RibbonToolbar = ({
                 label="Import Data"
                 onClick={() => setIsImportModalVisible(true)}
               />
-              {/* **FIX**: Added Export Data button back */}
               <RibbonButton
                 icon={<Download size={18} />}
                 label="Export Data"
@@ -231,6 +252,7 @@ const RibbonToolbar = ({
                 label="Historical"
                 isActive={isTimeSliderVisible}
                 onClick={() => {
+                  // ເມື່ອຄລິກ, ຈະເປີດ/ປິດທັງ historical layer ແລະ time slider
                   toggleHistoricalLayer(!isTimeSliderVisible);
                   setIsTimeSliderVisible(!isTimeSliderVisible);
                 }}
@@ -240,6 +262,7 @@ const RibbonToolbar = ({
           </div>
         </div>
 
+        {/* ເນື້ອຫາຂອງແຖບ Analysis (ຈະສະແດງເມື່ອ activeTab === 'analysis') */}
         <div className={`tab-pane ${activeTab === "analysis" ? "active" : ""}`}>
           <div className="ribbon-group">
             <div className="ribbon-buttons">
@@ -247,7 +270,7 @@ const RibbonToolbar = ({
                 icon={<Target size={18} />}
                 label="Buffer"
                 onClick={() => {
-                  /* Buffer logic needed */
+                  // ໂລຈິກສຳລັບ Buffer ຍັງບໍ່ທັນໄດ້ສ້າງ
                 }}
               />
             </div>
@@ -259,4 +282,5 @@ const RibbonToolbar = ({
   );
 };
 
+// ສົ່ງອອກ component ເພື່ອໃຫ້ໄຟລ໌ອື່ນສາມາດນຳໄປໃຊ້ໄດ້
 export default RibbonToolbar;

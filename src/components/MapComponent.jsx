@@ -6,13 +6,7 @@ import TileLayer from "ol/layer/Tile";
 import XYZ from "ol/source/XYZ";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
-import {
-  fromLonLat,
-  toLonLat,
-  transform,
-  METERS_PER_UNIT,
-  get as getProjection,
-} from "ol/proj";
+import { fromLonLat, toLonLat, transform, METERS_PER_UNIT } from "ol/proj";
 import { getCenter } from "ol/extent";
 import Point from "ol/geom/Point";
 import LineString from "ol/geom/LineString";
@@ -188,7 +182,7 @@ const MapComponent = ({
       const timeRange = `${firstDay}/${lastDay}`;
 
       const newHistoricalLayer = new TileLayer({
-        name: "historicalLayer",
+        name: "Sentinel 2",
         visible: true,
         source: new TileWMS({
           url: "https://services.sentinel-hub.com/ogc/wms/5aadfeac-8c28-45a4-8f5e-d6341e60fab5",
