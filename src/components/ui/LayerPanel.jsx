@@ -1,4 +1,3 @@
-// ນຳເຂົ້າ React hooks ແລະ icons ທີ່ຈຳເປັນ
 import React, { useState } from "react";
 import "./Panels.css";
 import {
@@ -9,162 +8,242 @@ import {
   Eye,
   EyeOff,
   Palette,
+  Image as ImageIcon,
 } from "lucide-react";
-// ນຳເຂົ້າ VectorSource ຈາກ OpenLayers ເພື່ອໃຊ້ໃນການຄຳນວນ extent
 import VectorSource from "ol/source/Vector";
 
-// Component ສຳລັບສະແດງຫົວຂໍ້ຂອງແຕ່ລະສ່ວນ (Section) ທີ່ສາມາດຍຸບ/ຂະຫຍາຍໄດ້
-const SectionHeader = ({ title, icon: Icon, isExpanded, onToggle }) => (
-  <div className="panel-section-header" onClick={onToggle}>
-    <h3 className="panel-section-header-h3">
-      <Icon size={16} /> {/* ສະແດງ icon */}
-      <span>{title}</span> {/* ສະແດງຊື່ຫົວຂໍ້ */}
-    </h3>
-    {/* ປຸ່ມລູກສອນທີ່ໝຸນຕາມສະຖານະ isExpanded */}
-    <button className={`toggle-button ${isExpanded ? "expanded" : ""}`}>
-      <ChevronDown size={20} />
-    </button>
-  </div>
-);
+// --- Reusable Sub-Components ---
 
-// Component ສຳລັບສະແດງແຖບເລື່ອນປັບຄວາມໂປ່ງໃສ (Opacity Slider)
-const OpacitySlider = ({ opacity, onOpacityChange, disabled }) => (
-  <div className="opacity-slider-container">
-    <input
-      type="range" // ປະເພດ input ເປັນແຖບເລື່ອນ
-      min="0" // ຄ່າຕ່ຳສຸດ
-      max="1" // ຄ່າສູງສຸດ
-      step="0.01" // ໄລຍະການປ່ຽນແປງ
-      value={opacity} // ຄ່າປັດຈຸບັນ
-      onChange={(e) => onOpacityChange(parseFloat(e.target.value))} // event handler ເມື່ອຄ່າປ່ຽນ
-      disabled={disabled} // ປິດການໃຊ້ງານເມື່ອ disabled ເປັນ true
-      className="opacity-slider"
-    />
-    {/* ສະແດງຄ່າ opacity ເປັນເປີເຊັນ */}
-    <span className="opacity-value">{(opacity * 100).toFixed(0)}%</span>
-  </div>
-);
-
-// Component ຫຼັກສຳລັບຈັດການ ແລະ ສະແດງລາຍການເລເຢີທີ່ນຳເຂົ້າມາ
-const LayerManager = ({ layers, setLayers, mapInstance, onStyleEdit }) => {
-  // Function ຈັດການການປ່ຽນແປງສະຖານະການເບິ່ງເຫັນ (ເປີດ/ປິດ) ຂອງເລເຢີ
-  const handleVisibilityChange = (id, visible) => {
-    setLayers((currentLayers) =>
-      currentLayers.map((l) => (l.id === id ? { ...l, visible } : l))
-    );
-  };
-
-  // Function ຈັດການການປ່ຽນແປງຄ່າຄວາມໂປ່ງໃສ (opacity) ຂອງເລເຢີ
-  const handleOpacityChange = (id, opacity) => {
-    setLayers((currentLayers) =>
-      currentLayers.map((l) => (l.id === id ? { ...l, opacity } : l))
-    );
-  };
-
-  // Function ຈັດການການລຶບເລເຢີ
-  const handleRemoveLayer = (id) => {
-    setLayers((currentLayers) => currentLayers.filter((l) => l.id !== id));
-  };
-
-  // Function ຈັດການການຊູມໄປຫາຂອບເຂດຂອງເລເຢີ
-  const handleZoomToLayer = (id) => {
-    if (!mapInstance) return;
-    const layerToZoom = layers.find((l) => l.id === id);
-    if (layerToZoom && layerToZoom.features.length > 0) {
-      const source = new VectorSource({ features: layerToZoom.features });
-      const extent = source.getExtent();
-      mapInstance.getView().fit(extent, {
-        padding: [100, 100, 100, 100],
-        duration: 1000,
-      });
-    }
-  };
-
-  // ຖ້າບໍ່ມີເລເຢີທີ່ນຳເຂົ້າມາ, ໃຫ້ສະແດງຂໍ້ຄວາມແຈ້ງເຕືອນ
-  if (layers.length === 0) {
-    return <p className="no-items-message">No data imported yet.</p>;
-  }
-
-  // ສ່ວນ UI ຂອງ LayerManager
+const SectionHeader = ({ title, icon, isExpanded, onToggle }) => {
+  // Rename prop 'icon' to 'IconComponent' to be used as a component
+  const IconComponent = icon;
   return (
-    <div className="layer-manager-container">
-      {/* Loop ຜ່ານທຸກເລເຢີໃນ array ເພື່ອສ້າງລາຍການຄວບຄຸມ */}
-      {layers.map((layer) => (
-        <div key={layer.id} className="layer-control-item">
-          <div className="layer-control-header">
-            <span className="layer-name" title={layer.name}>
-              {layer.name}
-            </span>
-            <div className="layer-actions">
-              {/* ປຸ່ມສຳລັບແກ້ໄຂ Style */}
-              <button onClick={() => onStyleEdit(layer.id)} title="Edit Style">
-                <Palette size={16} />
-              </button>
-              {/* ປຸ່ມສຳລັບເປີດ/ປິດການສະແດງຜົນ */}
-              <button
-                onClick={() => handleVisibilityChange(layer.id, !layer.visible)}
-                title={layer.visible ? "Hide Layer" : "Show Layer"}
-              >
-                {layer.visible ? <Eye size={16} /> : <EyeOff size={16} />}
-              </button>
-              {/* ປຸ່ມສຳລັບຊູມ */}
-              <button
-                onClick={() => handleZoomToLayer(layer.id)}
-                title="Zoom to Layer"
-              >
-                <ZoomIn size={16} />
-              </button>
-              {/* ປຸ່ມສຳລັບລຶບ */}
-              <button
-                onClick={() => handleRemoveLayer(layer.id)}
-                title="Remove Layer"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          </div>
-          {/* ແຖບເລື່ອນ Opacity */}
-          <OpacitySlider
-            opacity={layer.opacity}
-            onOpacityChange={(value) => handleOpacityChange(layer.id, value)}
-            disabled={!layer.visible}
-          />
-        </div>
-      ))}
+    <div className="panel-section-header" onClick={onToggle}>
+      <h3 className="panel-section-header-h3">
+        {IconComponent && <IconComponent size={16} />}
+        <span>{title}</span>
+      </h3>
+      <button className={`toggle-button ${isExpanded ? "expanded" : ""}`}>
+        <ChevronDown size={20} />
+      </button>
     </div>
   );
 };
 
-// Component ຫຼັກຂອງ Layer Panel (ແຜງດ້ານຂ້າງ)
+const OpacitySlider = ({ opacity, onOpacityChange, disabled }) => (
+  <div className="opacity-slider-container">
+    <input
+      type="range"
+      min="0"
+      max="1"
+      step="0.01"
+      value={opacity}
+      onChange={(e) => onOpacityChange(parseFloat(e.target.value))}
+      disabled={disabled}
+      className="opacity-slider"
+    />
+    <span className="opacity-value">{(opacity * 100).toFixed(0)}%</span>
+  </div>
+);
+
+// --- Layer Control Components ---
+
+const VectorLayerControls = ({
+  layer,
+  onVisibilityChange,
+  onOpacityChange,
+  onRemove,
+  onZoom,
+  onStyleEdit,
+}) => (
+  <div className="layer-control-item">
+    <div className="layer-control-header">
+      <span className="layer-name" title={layer.name}>
+        {layer.name}
+      </span>
+      <div className="layer-actions">
+        <button onClick={() => onStyleEdit(layer.id)} title="Edit Style">
+          <Palette size={16} />
+        </button>
+        <button
+          onClick={() => onVisibilityChange(layer.id, !layer.visible)}
+          title={layer.visible ? "Hide Layer" : "Show Layer"}
+        >
+          {layer.visible ? <Eye size={16} /> : <EyeOff size={16} />}
+        </button>
+        <button onClick={() => onZoom(layer.id)} title="Zoom to Layer">
+          <ZoomIn size={16} />
+        </button>
+        <button onClick={() => onRemove(layer.id)} title="Remove Layer">
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </div>
+    <OpacitySlider
+      opacity={layer.opacity}
+      onOpacityChange={(value) => onOpacityChange(layer.id, value)}
+      disabled={!layer.visible}
+    />
+  </div>
+);
+
+const ImageLayerControls = ({
+  layer,
+  onVisibilityChange,
+  onOpacityChange,
+  onRemove,
+  onZoom,
+}) => (
+  <div className="layer-control-item">
+    <div className="layer-control-header">
+      <span className="layer-name" title={layer.name}>
+        {layer.name}
+      </span>
+      <div className="layer-actions">
+        <button
+          onClick={() => onVisibilityChange(layer.id, !layer.visible)}
+          title={layer.visible ? "Hide Layer" : "Show Layer"}
+        >
+          {layer.visible ? <Eye size={16} /> : <EyeOff size={16} />}
+        </button>
+        <button onClick={() => onZoom(layer.id)} title="Zoom to Layer">
+          <ZoomIn size={16} />
+        </button>
+        <button onClick={() => onRemove(layer.id)} title="Remove Layer">
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </div>
+    <OpacitySlider
+      opacity={layer.opacity}
+      onOpacityChange={(value) => onOpacityChange(layer.id, value)}
+      disabled={!layer.visible}
+    />
+  </div>
+);
+
+// --- Main Layer Panel Component ---
+
 const LayerPanel = ({
   isVisible,
   importedLayers,
   setImportedLayers,
+  imageLayers,
+  setImageLayers,
   mapInstance,
   onStyleEdit,
 }) => {
-  // State ສຳລັບຄວບຄຸມການຍຸບ/ຂະຫຍາຍຂອງສ່ວນ "Imported Layers"
-  const [isImportedLayersExpanded, setIsImportedLayersExpanded] =
-    useState(true);
+  const [expandedSections, setExpandedSections] = useState({
+    vectors: true,
+    images: true,
+  });
 
-  // ສ່ວນ UI ຫຼັກຂອງ Panel, ຈະເພີ່ມ class 'visible' ເພື່ອໃຫ້ມັນເລື່ອນເຂົ້າມາ
+  const toggleSection = (section) => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // --- Handlers for Vector Layers ---
+  const handleVectorVisibilityChange = (id, visible) =>
+    setImportedLayers((layers) =>
+      layers.map((l) => (l.id === id ? { ...l, visible } : l))
+    );
+  const handleVectorOpacityChange = (id, opacity) =>
+    setImportedLayers((layers) =>
+      layers.map((l) => (l.id === id ? { ...l, opacity } : l))
+    );
+  const handleVectorRemove = (id) =>
+    setImportedLayers((layers) => layers.filter((l) => l.id !== id));
+  const handleVectorZoom = (id) => {
+    if (!mapInstance) return;
+    const layerToZoom = importedLayers.find((l) => l.id === id);
+    if (layerToZoom && layerToZoom.features.length > 0) {
+      const source = new VectorSource({ features: layerToZoom.features });
+      mapInstance
+        .getView()
+        .fit(source.getExtent(), {
+          padding: [100, 100, 100, 100],
+          duration: 1000,
+        });
+    }
+  };
+
+  // --- Handlers for Image Layers ---
+  const handleImageVisibilityChange = (id, visible) =>
+    setImageLayers((layers) =>
+      layers.map((l) => (l.id === id ? { ...l, visible } : l))
+    );
+  const handleImageOpacityChange = (id, opacity) =>
+    setImageLayers((layers) =>
+      layers.map((l) => (l.id === id ? { ...l, opacity } : l))
+    );
+  const handleImageRemove = (id) =>
+    setImageLayers((layers) => layers.filter((l) => l.id !== id));
+  const handleImageZoom = (id) => {
+    if (!mapInstance) return;
+    const layerToZoom = imageLayers.find((l) => l.id === id);
+    if (layerToZoom) {
+      mapInstance
+        .getView()
+        .fit(layerToZoom.extent, { padding: [50, 50, 50, 50], duration: 1000 });
+    }
+  };
+
   return (
     <div className={`panel ${isVisible ? "visible" : ""}`}>
+      {/* Vector Layers Section */}
       <div className="panel-section">
         <SectionHeader
           title="Imported Layers"
           icon={Layers}
-          isExpanded={isImportedLayersExpanded}
-          onToggle={() => setIsImportedLayersExpanded((prev) => !prev)}
+          isExpanded={expandedSections.vectors}
+          onToggle={() => toggleSection("vectors")}
         />
-        {/* ກວດສອບວ່າຖ້າ section ຖືກຂະຫຍາຍຢູ່, ຈຶ່ງຈະ render LayerManager */}
-        {isImportedLayersExpanded && (
-          <LayerManager
-            layers={importedLayers}
-            setLayers={setImportedLayers}
-            mapInstance={mapInstance}
-            onStyleEdit={onStyleEdit}
-          />
+        {expandedSections.vectors && (
+          <div className="layer-manager-container">
+            {importedLayers && importedLayers.length > 0 ? (
+              importedLayers.map((layer) => (
+                <VectorLayerControls
+                  key={layer.id}
+                  layer={layer}
+                  onVisibilityChange={handleVectorVisibilityChange}
+                  onOpacityChange={handleVectorOpacityChange}
+                  onRemove={handleVectorRemove}
+                  onZoom={handleVectorZoom}
+                  onStyleEdit={onStyleEdit}
+                />
+              ))
+            ) : (
+              <p className="no-items-message">No vector data imported yet.</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Image Layers Section */}
+      <div className="panel-section">
+        <SectionHeader
+          title="Image Layers"
+          icon={ImageIcon}
+          isExpanded={expandedSections.images}
+          onToggle={() => toggleSection("images")}
+        />
+        {expandedSections.images && (
+          <div className="layer-manager-container">
+            {imageLayers && imageLayers.length > 0 ? (
+              imageLayers.map((layer) => (
+                <ImageLayerControls
+                  key={layer.id}
+                  layer={layer}
+                  onVisibilityChange={handleImageVisibilityChange}
+                  onOpacityChange={handleImageOpacityChange}
+                  onRemove={handleImageRemove}
+                  onZoom={handleImageZoom}
+                />
+              ))
+            ) : (
+              <p className="no-items-message">No images imported yet.</p>
+            )}
+          </div>
         )}
       </div>
     </div>

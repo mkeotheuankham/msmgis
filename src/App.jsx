@@ -8,11 +8,13 @@ import ImportDataModal from "./components/ui/ImportDataModal";
 import AttributePanel from "./components/ui/AttributePanel";
 import StyleEditorModal from "./components/ui/StyleEditorModal";
 import ExportDataModal from "./components/ui/ExportDataModal";
+import ImageLayerModal from "./components/ui/ImageLayerModal";
 import "./App.css";
 import shp from "shpjs";
 import { KML, GeoJSON } from "ol/format";
 // **ແກ້ໄຂ:** ລຶບ toLonLat ທີ່ບໍ່ໄດ້ໃຊ້ອອກ
 import { fromLonLat } from "ol/proj";
+import { transformExtent } from "ol/proj";
 import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
 import { v4 as uuidv4 } from "uuid";
@@ -51,6 +53,17 @@ proj4.defs([
   ],
 ]);
 
+// **อัปเดต:** สร้างรายการ Projection สำหรับ Modal
+const utmProjections = [
+  { key: "WGS84_UTM47N", name: "WGS 84 / UTM zone 47N" },
+  { key: "WGS84_UTM48N", name: "WGS 84 / UTM zone 48N" },
+  { key: "INDIAN1975_UTM47N", name: "Indian 1975 / UTM zone 47N" },
+  { key: "INDIAN1975_UTM48N", name: "Indian 1975 / UTM zone 48N" },
+  { key: "LAO1997_UTM47N", name: "Lao 1997 / UTM zone 47N" },
+  { key: "LAO1997_UTM48N", name: "Lao 1997 / UTM zone 48N" },
+  { key: "EPSG:4326", name: "WGS 84 (Latitude/Longitude)" },
+];
+
 function App() {
   // --- State Management ---
   const [activeTool, setActiveTool] = useState("pan");
@@ -59,6 +72,8 @@ function App() {
   const [activePanel, setActivePanel] = useState(null);
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [importedLayers, setImportedLayers] = useState([]);
+  const [imageLayers, setImageLayers] = useState([]); // **อัปเดต:** State ใหม่สำหรับ Image Layers
+  const [isImageModalVisible, setIsImageModalVisible] = useState(false); // **อัปเดต:** State ใหม่
   const [isExportModalVisible, setIsExportModalVisible] = useState(false);
 
   const [graticuleEnabled, setGraticuleEnabled] = useState(false);
@@ -375,6 +390,24 @@ function App() {
     setIsStyleEditorVisible(false);
   };
 
+  // **อัปเดต:** Handler ใหม่สำหรับรับข้อมูลจาก ImageLayerModal
+  const handleAddImageLayer = (file, extent, projection) => {
+    const imageUrl = URL.createObjectURL(file);
+    const transformedExtent = transformExtent(extent, projection, "EPSG:3857");
+
+    const newImageLayer = {
+      id: uuidv4(),
+      name: file.name,
+      url: imageUrl,
+      extent: transformedExtent,
+      visible: true,
+      opacity: 1.0,
+    };
+
+    setImageLayers((prevLayers) => [...prevLayers, newImageLayer]);
+    setActivePanel("layers"); // เปิด Layer Panel
+  };
+
   return (
     <div className="app-container">
       <RibbonToolbar
@@ -391,6 +424,7 @@ function App() {
         handleZoomOut={handleZoomOut}
         handleZoomToLayer={handleZoomToLayer}
         handleFullExtent={handleFullExtent}
+        setIsImageModalVisible={setIsImageModalVisible} // **อัปเดต:** ส่ง prop
       />
       <div className="main-content">
         <MapComponent
@@ -401,6 +435,7 @@ function App() {
           importedLayers={importedLayers}
           baseLayerStates={baseLayerStates}
           onFeatureSelect={handleFeatureSelect}
+          imageLayers={imageLayers} // **อัปเดต:** ส่ง prop
         />
         <LayerPanel
           isVisible={activePanel === "layers"}
@@ -408,6 +443,8 @@ function App() {
           setImportedLayers={setImportedLayers}
           mapInstance={mapInstance}
           onStyleEdit={handleStyleEdit}
+          imageLayers={imageLayers} // **อัปเดต:** ส่ง prop
+          setImageLayers={setImageLayers} // **อัปเดต:** ส่ง prop
         />
         <BaseMapPanel
           isVisible={activePanel === "basemaps"}
@@ -438,6 +475,12 @@ function App() {
         layer={stylingLayer}
         onClose={() => setIsStyleEditorVisible(false)}
         onSave={handleStyleSave}
+      />
+      <ImageLayerModal
+        isVisible={isImageModalVisible}
+        onClose={() => setIsImageModalVisible(false)}
+        onAddImage={handleAddImageLayer}
+        projections={utmProjections}
       />
       <StatusBar
         graticuleEnabled={graticuleEnabled}

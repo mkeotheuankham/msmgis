@@ -1,6 +1,4 @@
-// ນຳເຂົ້າ React hooks ທີ່ຈຳເປັນ
 import React, { useCallback } from "react";
-// ນຳເຂົ້າ icons ຕ່າງໆຈາກ library lucide-react ເພື່ອໃຊ້ໃນປຸ່ມຕ່າງໆ
 import {
   Hand,
   Eraser,
@@ -18,15 +16,13 @@ import {
   Fullscreen,
   Target,
   Map as BaseMapIcon,
-  // **ລຶບອອກ:** Clock icon ບໍ່ໄດ້ໃຊ້ແລ້ວ
   Edit,
   Upload,
   Download,
+  Image as ImageIcon, // **อัปเดต:** เพิ่ม ImageIcon
 } from "lucide-react";
-// ນຳເຂົ້າ CSS file ສຳລັບ component ນີ້
 import "./RibbonToolbar.css";
 
-// ສ້າງ functional component ຊື່ RibbonToolbar
 const RibbonToolbar = ({
   activeTool,
   setActiveTool,
@@ -34,33 +30,24 @@ const RibbonToolbar = ({
   setActiveTab,
   activePanel,
   setActivePanel,
-  // **ລຶບອອກ:** Props ທີ່ກ່ຽວຂ້ອງກັບ Historical/TimeSlider
-  // isTimeSliderVisible,
-  // setIsTimeSliderVisible,
-  // toggleHistoricalLayer,
   setIsImportModalVisible,
   setIsExportModalVisible,
+  setIsImageModalVisible, // **อัปเดต:** เพิ่ม prop ใหม่
   handleClearMap,
   handleZoomIn,
   handleZoomOut,
   handleZoomToLayer,
   handleFullExtent,
 }) => {
-  // Function ຈັດການການຄລິກແຖບ (tab)
   const handleTabClick = (tab) => setActiveTab(tab);
-
-  // Function ຈັດການການຄລິກເຄື່ອງມື (tool)
   const handleToolClick = useCallback(
     (tool) => setActiveTool(tool),
     [setActiveTool]
   );
-
-  // Function ເປີດ/ປິດແຜງດ້ານຂ້າງ (Layer Panel, Base Map Panel)
   const handlePanelToggle = (panelName) => {
     setActivePanel((prev) => (prev === panelName ? null : panelName));
   };
 
-  // ສ້າງ sub-component ພາຍໃນຊື່ RibbonButton ເພື່ອໃຊ້ซ้ำ
   const RibbonButton = ({ icon, label, toolName, onClick, isActive }) => {
     const buttonIsActive = isActive || activeTool === toolName;
     return (
@@ -77,7 +64,6 @@ const RibbonToolbar = ({
 
   return (
     <div className="ribbon-toolbar">
-      {/* ສ່ວນຂອງແຖບ (Tabs) */}
       <div className="ribbon-tabs">
         <button
           className={`ribbon-tab ${activeTab === "home" ? "active" : ""}`}
@@ -98,11 +84,9 @@ const RibbonToolbar = ({
           Analysis
         </button>
       </div>
-
-      {/* ສ່ວນຂອງເນື້ອຫາໃນແຕ່ລະແຖບ */}
       <div className="ribbon-content">
-        {/* ເນື້ອຫາຂອງແຖບ Home */}
         <div className={`tab-pane ${activeTab === "home" ? "active" : ""}`}>
+          {/* ... Home tab content remains the same ... */}
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
@@ -169,9 +153,8 @@ const RibbonToolbar = ({
             <div className="ribbon-group-title">Measure</div>
           </div>
         </div>
-
-        {/* ເນື້ອຫາຂອງແຖບ Map */}
         <div className={`tab-pane ${activeTab === "map" ? "active" : ""}`}>
+          {/* ... Navigation, View, Base Maps groups remain the same ... */}
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
@@ -223,8 +206,14 @@ const RibbonToolbar = ({
             <div className="ribbon-buttons">
               <RibbonButton
                 icon={<Upload size={18} />}
-                label="Import Data"
+                label="Import Vector"
                 onClick={() => setIsImportModalVisible(true)}
+              />
+              {/* **อัปเดต:** เพิ่มปุ่ม Import Image */}
+              <RibbonButton
+                icon={<ImageIcon size={18} />}
+                label="Import Image"
+                onClick={() => setIsImageModalVisible(true)}
               />
               <RibbonButton
                 icon={<Download size={18} />}
@@ -234,35 +223,15 @@ const RibbonToolbar = ({
             </div>
             <div className="ribbon-group-title">Data</div>
           </div>
-          {/* **ລຶບອອກ:** ກຸ່ມປຸ່ມ Time Series ທີ່ບັນຈຸປຸ່ມ Historical */}
-          {/*
-          <div className="ribbon-group">
-            <div className="ribbon-buttons">
-              <RibbonButton
-                icon={<Clock size={18} />}
-                label="Historical"
-                isActive={isTimeSliderVisible}
-                onClick={() => {
-                  toggleHistoricalLayer(!isTimeSliderVisible);
-                  setIsTimeSliderVisible(!isTimeSliderVisible);
-                }}
-              />
-            </div>
-            <div className="ribbon-group-title">Time Series</div>
-          </div>
-          */}
         </div>
-
-        {/* ເນື້ອຫາຂອງແຖບ Analysis */}
         <div className={`tab-pane ${activeTab === "analysis" ? "active" : ""}`}>
+          {/* ... Analysis tab content remains the same ... */}
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
                 icon={<Target size={18} />}
                 label="Buffer"
-                onClick={() => {
-                  // Logic for Buffer
-                }}
+                onClick={() => {}}
               />
             </div>
             <div className="ribbon-group-title">Geoprocessing</div>
