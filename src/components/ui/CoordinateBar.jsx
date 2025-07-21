@@ -278,7 +278,7 @@ const CoordinateBar = ({ map }) => {
         {isPanelVisible ? <X size={20} /> : <Compass size={20} />}{" "}
         {/* Change icon based on visibility */}
       </button>
-      <style jsx>{`
+      <style>{`
         /* CSS Variables - Defined directly in the component for self-containment */
         :root {
           --header-height: 50px;
