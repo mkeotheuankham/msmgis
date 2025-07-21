@@ -198,7 +198,7 @@ const MapComponent = ({
       const lastDay = new Date(year, month + 1, 0).toISOString().split("T")[0];
       const timeRange = `${firstDay}/${lastDay}`;
       const newHistoricalLayer = new TileLayer({
-        name: "historicalLayer",
+        name: "sentinel 2",
         visible: true,
         source: new TileWMS({
           url: "https://services.sentinel-hub.com/ogc/wms/5aadfeac-8c28-45a4-8f5e-d6341e60fab5", // Note: This is a public test ID
