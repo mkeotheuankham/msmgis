@@ -4,7 +4,6 @@ import MapComponent from "./components/MapComponent";
 import StatusBar from "./components/StatusBar";
 import LayerPanel from "./components/ui/LayerPanel";
 import BaseMapPanel from "./components/ui/BaseMapPanel";
-import TimeSliderPanel from "./components/ui/TimeSliderPanel";
 import ImportDataModal from "./components/ui/ImportDataModal";
 import AttributePanel from "./components/ui/AttributePanel";
 import StyleEditorModal from "./components/ui/StyleEditorModal";
@@ -12,7 +11,8 @@ import ExportDataModal from "./components/ui/ExportDataModal";
 import "./App.css";
 import shp from "shpjs";
 import { KML, GeoJSON } from "ol/format";
-import { fromLonLat, toLonLat } from "ol/proj";
+// **ແກ້ໄຂ:** ລຶບ toLonLat ທີ່ບໍ່ໄດ້ໃຊ້ອອກ
+import { fromLonLat } from "ol/proj";
 import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
 import { v4 as uuidv4 } from "uuid";
@@ -60,15 +60,10 @@ function App() {
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [importedLayers, setImportedLayers] = useState([]);
   const [isExportModalVisible, setIsExportModalVisible] = useState(false);
-  const [drawInteraction, setDrawInteraction] = useState(null); // Keep for potential future use, but not passed to StatusBar
 
   const [graticuleEnabled, setGraticuleEnabled] = useState(false);
   const [graticuleType, setGraticuleType] = useState("WGS84");
   const [showGraticuleOptions, setShowGraticuleOptions] = useState(false);
-
-  const [isHistoricalLayerActive, setIsHistoricalLayerActive] = useState(false);
-  const [isTimeSliderVisible, setIsTimeSliderVisible] = useState(false);
-  const [selectedDate, setSelectedDate] = useState("2024-01-01");
 
   const [selectedFeatureInfo, setSelectedFeatureInfo] = useState(null);
 
@@ -111,6 +106,7 @@ function App() {
     if (mapInstance)
       mapInstance.getView().setZoom(mapInstance.getView().getZoom() + 1);
   }, [mapInstance]);
+
   const handleZoomOut = useCallback(() => {
     if (mapInstance)
       mapInstance.getView().setZoom(mapInstance.getView().getZoom() - 1);
@@ -188,7 +184,119 @@ function App() {
       let features = [];
       try {
         if (extension === "csv") {
-          // CSV logic remains the same
+          const lines = content
+            .split(/\r\n|\n/)
+            .filter((line) => line.trim() !== "");
+          if (lines.length < 2) {
+            throw new Error(
+              "CSV file must have a header and at least one data row."
+            );
+          }
+          const headers = lines[0]
+            .split(",")
+            .map((h) => h.trim().toLowerCase());
+
+          const lonIndex = headers.findIndex(
+            (h) => h === "lon" || h === "longitude"
+          );
+          const latIndex = headers.findIndex(
+            (h) => h === "lat" || h === "latitude"
+          );
+          const eastingIndex = headers.findIndex(
+            (h) => h === "x" || h === "easting"
+          );
+          const northingIndex = headers.findIndex(
+            (h) => h === "y" || h === "northing"
+          );
+          // **ອັບເດດ:** ຊອກຫາຖັນ Z
+          const zIndex = headers.findIndex(
+            (h) => h === "z" || h === "elevation" || h === "height"
+          );
+
+          if (lonIndex !== -1 && latIndex !== -1) {
+            // Handle Geographic Coordinates (Lat/Lon)
+            for (let i = 1; i < lines.length; i++) {
+              const data = lines[i].split(",");
+              if (data.length < headers.length) continue;
+              const lon = parseFloat(data[lonIndex]);
+              const lat = parseFloat(data[latIndex]);
+              // **ອັບເດດ:** ອ່ານຄ່າ Z
+              const z = zIndex !== -1 ? parseFloat(data[zIndex]) : undefined;
+
+              if (!isNaN(lon) && !isNaN(lat)) {
+                const properties = {};
+                headers.forEach((header, index) => {
+                  properties[header] = data[index]?.trim() || "";
+                });
+
+                // **ອັບເດດ:** ສ້າງ Coordinate ທີ່ອາດຈະມີຄ່າ Z
+                const coordinate = [lon, lat];
+                if (z !== undefined && !isNaN(z)) {
+                  coordinate.push(z);
+                }
+
+                const feature = new Feature({
+                  geometry: new Point(fromLonLat(coordinate)),
+                  ...properties,
+                });
+                features.push(feature);
+              }
+            }
+          } else if (eastingIndex !== -1 && northingIndex !== -1) {
+            // Handle Projected Coordinates (UTM)
+            const projIndex = headers.findIndex(
+              (h) => h === "projection" || h === "crs" || h === "srs"
+            );
+            if (projIndex === -1) {
+              throw new Error(
+                "CSV with UTM coordinates must contain a 'projection' column (e.g., 'WGS84_UTM48N', 'LAO1997_UTM47N')."
+              );
+            }
+            for (let i = 1; i < lines.length; i++) {
+              const data = lines[i].split(",");
+              if (data.length < headers.length) continue;
+              const x = parseFloat(data[eastingIndex]);
+              const y = parseFloat(data[northingIndex]);
+              // **ອັບເດດ:** ອ່ານຄ່າ Z
+              const z = zIndex !== -1 ? parseFloat(data[zIndex]) : undefined;
+              const sourceProj = data[projIndex]?.trim();
+
+              if (!isNaN(x) && !isNaN(y) && sourceProj) {
+                if (!proj4.defs(sourceProj)) {
+                  console.warn(
+                    `Projection '${sourceProj}' not defined for row ${
+                      i + 1
+                    }. Skipping.`
+                  );
+                  continue;
+                }
+                const properties = {};
+                headers.forEach((header, index) => {
+                  properties[header] = data[index]?.trim() || "";
+                });
+
+                // **ອັບເດດ:** ສ້າງ Coordinate ທີ່ອາດຈະມີຄ່າ Z
+                const mapCoords2D = proj4(sourceProj, "EPSG:3857").forward([
+                  x,
+                  y,
+                ]);
+                const finalCoords = [...mapCoords2D];
+                if (z !== undefined && !isNaN(z)) {
+                  finalCoords.push(z);
+                }
+
+                const feature = new Feature({
+                  geometry: new Point(finalCoords),
+                  ...properties,
+                });
+                features.push(feature);
+              }
+            }
+          } else {
+            throw new Error(
+              "CSV file must contain coordinate columns (e.g., 'lat'/'lon' or 'x'/'y')."
+            );
+          }
         } else if (extension === "kml") {
           const kmlFormat = new KML({
             extractStyles: true,
@@ -220,6 +328,7 @@ function App() {
             features: features,
             visible: true,
             opacity: 1,
+            style: null,
           };
           setImportedLayers((prevLayers) => [newLayer, ...prevLayers]);
           setActivePanel("layers");
@@ -239,16 +348,9 @@ function App() {
     }
   };
 
-  const handleExportData = useCallback(
-    (layerId, format) => {
-      // Export logic remains the same
-    },
-    [mapInstance, importedLayers, getLayerByName]
-  );
-
-  const toggleHistoricalLayer = (isActive) => {
-    // Historical layer logic remains the same
-  };
+  const handleExportData = useCallback((layerId, format) => {
+    console.log(`Exporting layer ${layerId} in ${format} format.`);
+  }, []);
 
   const handleFeatureSelect = (info) => {
     setSelectedFeatureInfo(info);
@@ -282,9 +384,6 @@ function App() {
         setActiveTab={setActiveTab}
         activePanel={activePanel}
         setActivePanel={setActivePanel}
-        isTimeSliderVisible={isTimeSliderVisible}
-        setIsTimeSliderVisible={setIsTimeSliderVisible}
-        toggleHistoricalLayer={toggleHistoricalLayer}
         setIsImportModalVisible={setIsImportModalVisible}
         setIsExportModalVisible={setIsExportModalVisible}
         handleClearMap={handleClearMap}
@@ -299,12 +398,9 @@ function App() {
           setMapInstance={setMapInstance}
           graticuleEnabled={graticuleEnabled}
           graticuleType={graticuleType}
-          isHistoricalLayerActive={isHistoricalLayerActive}
-          selectedDate={selectedDate}
           importedLayers={importedLayers}
           baseLayerStates={baseLayerStates}
           onFeatureSelect={handleFeatureSelect}
-          setDrawInteraction={setDrawInteraction}
         />
         <LayerPanel
           isVisible={activePanel === "layers"}
@@ -331,11 +427,6 @@ function App() {
         onExport={handleExportData}
         mapInstance={mapInstance}
         importedLayers={importedLayers}
-      />
-      <TimeSliderPanel
-        isVisible={isTimeSliderVisible}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
       />
       <AttributePanel
         info={selectedFeatureInfo}

@@ -146,6 +146,10 @@ const MapComponent = ({
       ],
       view: new View({ center: fromLonLat([102.6, 17.97]), zoom: 7 }),
       controls: [],
+      // **ການແກ້ໄຂ:** ເພີ່ມ option ນີ້ເພື່ອປັບປຸງປະສິດທິພາບ
+      contextOptions: {
+        willReadFrequently: true,
+      },
     });
 
     setMapInstance(olMap.current);
