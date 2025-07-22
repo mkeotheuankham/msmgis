@@ -113,24 +113,24 @@ const BaseMapPanel = ({
             </h3>
           </div>
           <div className="property-grid">
-            {baseMaps.map(({ key, name, icon: Icon }) => {
-              const layer = baseLayerStates[key];
+            {baseMaps.map((item) => {
+              const layer = baseLayerStates[item.key];
               if (!layer) return null;
               return (
-                <div key={key} className="layer-control-item">
+                <div key={item.key} className="layer-control-item">
                   <button
                     className={`basemap-option ${
                       layer.visible ? "active" : ""
                     }`}
-                    onClick={() => onBaseMapChange(key)}
+                    onClick={() => onBaseMapChange(item.key)}
                   >
-                    <Icon size={18} /> {/* ໃຊ້ Icon ທີ່ນີ້ */}
-                    <span>{name}</span>
+                    <item.icon size={18} />
+                    <span>{item.name}</span>
                   </button>
                   <OpacitySlider
                     opacity={layer.opacity}
                     onOpacityChange={(value) =>
-                      onBaseMapOpacityChange(key, value)
+                      onBaseMapOpacityChange(item.key, value)
                     }
                     disabled={!layer.visible}
                   />
