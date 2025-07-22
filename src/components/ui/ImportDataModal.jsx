@@ -44,12 +44,14 @@ const ImportDataModal = ({ isVisible, onClose, onFileImport }) => {
   const styles = `
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background-color: rgba(0, 0, 0, 0.7); z-index: 1040;
+      background-color: rgba(0, 0, 0, 0.6); z-index: 1040;
       display: flex; justify-content: center; align-items: center;
-      backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     }
     .modal-content {
-      background: #2a2d32; border: 1px solid #4a4d52; border-radius: 8px;
+      background: rgba(26, 29, 33, 0.8); /* Semi-transparent background */
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); padding: 1.5rem;
       display: flex; flex-direction: column; color: #f0f0f0;
       position: relative; width: 500px; max-width: 90%;
@@ -61,7 +63,7 @@ const ImportDataModal = ({ isVisible, onClose, onFileImport }) => {
     }
     .modal-title {
       margin: 0; padding-bottom: 1rem; margin-bottom: 1rem;
-      border-bottom: 1px solid #4a4d52; font-size: 1.25rem; font-weight: 600;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-size: 1.25rem; font-weight: 600;
       display: flex; align-items: center; gap: 0.5rem;
     }
     .close-button {
@@ -70,14 +72,15 @@ const ImportDataModal = ({ isVisible, onClose, onFileImport }) => {
     }
     .close-button:hover { color: #ffffff; }
     .dropzone {
-      border: 2px dashed #4a4d52; border-radius: 8px;
+      border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 8px;
       padding: 2.5rem; text-align: center; color: #a0a0a0;
+      background-color: rgba(0, 0, 0, 0.2);
       cursor: pointer; transition: border-color 0.3s, background-color 0.3s;
     }
     .dropzone:hover {
-      border-color: #00aaff; background-color: #3a3d42;
+      border-color: #00aaff; background-color: rgba(0, 170, 255, 0.1);
     }
-    .dropzone p { margin: 0.5rem 0; }
+    .dropzone p { margin: 0.5rem 0; font-size: 1rem; color: #f0f0f0; }
     .instructions {
       margin-top: 1.5rem; font-size: 0.85rem; color: #a0a0a0;
     }
