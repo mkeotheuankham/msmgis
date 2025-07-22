@@ -3,9 +3,10 @@ import {
   Layers,
   Map as StreetMapIcon,
   Globe,
-  Mountain,
-  Image,
-  MapPin,
+  Earth,
+  MapPlus,
+  Satellite,
+  Layers2,
 } from "lucide-react";
 
 // Component ສຳລັບສະແດງແຖບເລື່ອນປັບຄວາມໂປ່ງໃສ (Opacity Slider)
@@ -34,11 +35,11 @@ const BaseMapPanel = ({
 }) => {
   const baseMaps = [
     { key: "osm", name: "Street Map", icon: StreetMapIcon },
-    { key: "satellite", name: "Esri Satellite", icon: Image },
+    { key: "satellite", name: "Esri Satellite", icon: Satellite },
     { key: "googleSatellite", name: "Google Satellite", icon: Globe },
-    { key: "googleHybrid", name: "Google Hybrid", icon: Layers },
-    { key: "topo", name: "Stadia AlidadeSatellite", icon: Mountain },
-    { key: "carto", name: "Carto Voyager", icon: MapPin },
+    { key: "googleHybrid", name: "Google Hybrid", icon: Earth },
+    { key: "topo", name: "Stadia AlidadeSatellite", icon: MapPlus },
+    { key: "carto", name: "Carto Voyager", icon: Layers2 },
   ];
 
   const styles = `
