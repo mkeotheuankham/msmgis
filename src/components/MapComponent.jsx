@@ -79,9 +79,15 @@ const MapComponent = ({
       }),
       new TileLayer({
         source: new XYZ({
-          url: "https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png",
+          url: "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}.jpg",
+          attributions: [
+            "© CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data)",
+            '© <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a>',
+            '© <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a>',
+            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          ].join(" | "),
         }),
-        name: "topo",
+        name: "topo", // ຍັງໃຊ້ຊື່ "topo" ເພື່ອຮອງຮັບການເຂົ້າກັນໄດ້ກັບ code ເກົ່າ
         visible: false,
       }),
       new TileLayer({

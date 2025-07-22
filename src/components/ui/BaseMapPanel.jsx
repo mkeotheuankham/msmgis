@@ -1,6 +1,4 @@
-// ນຳເຂົ້າ React library ແລະ icons ທີ່ຈຳເປັນ
 import React from "react";
-import "./Panels.css";
 import {
   Layers,
   Map as StreetMapIcon,
@@ -11,91 +9,139 @@ import {
 } from "lucide-react";
 
 // Component ສຳລັບສະແດງແຖບເລື່ອນປັບຄວາມໂປ່ງໃສ (Opacity Slider)
-// ເປັນ sub-component ທີ່ນຳໄປໃຊ້ຄືນໄດ້
 const OpacitySlider = ({ opacity, onOpacityChange, disabled }) => (
   <div className="opacity-slider-container">
     <input
-      type="range" // ປະເພດ input ເປັນແຖບເລື່ອນ
-      min="0" // ຄ່າຕ່ຳສຸດ
-      max="1" // ຄ່າສູງສຸດ
-      step="0.01" // ໄລຍະການປ່ຽນແປງ
-      value={opacity} // ຄ່າປັດຈຸບັນ
-      onChange={(e) => onOpacityChange(parseFloat(e.target.value))} // event handler ເມື່ອຄ່າປ່ຽນ
-      disabled={disabled} // ປິດການໃຊ້ງານເມື່ອ disabled ເປັນ true
+      type="range"
+      min="0"
+      max="1"
+      step="0.01"
+      value={opacity}
+      onChange={(e) => onOpacityChange(parseFloat(e.target.value))}
+      disabled={disabled}
       className="opacity-slider"
     />
-    {/* ສະແດງຄ່າ opacity ເປັນເປີເຊັນ */}
     <span className="opacity-value">{(opacity * 100).toFixed(0)}%</span>
   </div>
 );
 
-// Component ຫຼັກຂອງ BaseMap Panel (ແຜງດ້ານຂ້າງສຳລັບເລືອກແຜນທີ່ພື້ນຫຼັງ)
+// Component ຫຼັກຂອງ BaseMap Panel
 const BaseMapPanel = ({
-  isVisible, // ສະຖານະການສະແດງ/ເຊື່ອງ panel
-  baseLayerStates, // Object ທີ່ເກັບສະຖານະ (visible, opacity) ຂອງທຸກ base layer
-  onBaseMapChange, // Function ທີ່ເອີ້ນເມື່ອມີການເລືອກ base map
-  onBaseMapOpacityChange, // Function ທີ່ເອີ້ນເມື່ອມີການປັບ opacity
+  isVisible,
+  baseLayerStates,
+  onBaseMapChange,
+  onBaseMapOpacityChange,
 }) => {
-  // Array ຂອງ object ທີ່ກຳນົດຂໍ້ມູນຂອງແຕ່ລະ base map ທີ່ມີໃຫ້ເລືອກ
   const baseMaps = [
-    { key: "osm", name: "Street Map", icon: <StreetMapIcon size={18} /> },
-    { key: "satellite", name: "Esri Satellite", icon: <Image size={18} /> },
-    {
-      key: "googleSatellite",
-      name: "Google Satellite",
-      icon: <Globe size={18} />,
-    },
-    { key: "googleHybrid", name: "Google Hybrid", icon: <Layers size={18} /> },
-    { key: "topo", name: "Topographic", icon: <Mountain size={18} /> },
-    { key: "carto", name: "Carto Voyager", icon: <MapPin size={18} /> },
+    { key: "osm", name: "Street Map", icon: StreetMapIcon },
+    { key: "satellite", name: "Esri Satellite", icon: Image },
+    { key: "googleSatellite", name: "Google Satellite", icon: Globe },
+    { key: "googleHybrid", name: "Google Hybrid", icon: Layers },
+    { key: "topo", name: "Stadia AlidadeSatellite", icon: Mountain },
+    { key: "carto", name: "Carto Voyager", icon: MapPin },
   ];
 
-  // ສ່ວນຂອງ UI ທີ່ component ຈະ render ອອກມາ
+  const styles = `
+    .panel {
+      position: absolute; top: 0; right: 0; bottom: 0;
+      width: 280px; background: #2a2d32;
+      border-left: 1px solid #4a4d52;
+      overflow-y: auto; display: flex; flex-direction: column;
+      padding: 1rem; z-index: 10;
+      transform: translateX(100%);
+      transition: transform 0.3s ease-in-out;
+      box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+    }
+    .panel.visible {
+      transform: translateX(0);
+    }
+    .panel-section {
+      background-color: #1a1d21;
+      border-radius: 8px;
+      padding: 1rem;
+      border: 1px solid #4a4d52;
+    }
+    .panel-section-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 4px 0; margin-bottom: 8px; color: #f0f0f0;
+    }
+    .panel-section-header.static { cursor: default; }
+    .panel-section-header-h3 {
+      margin: 0; font-size: 1.05rem; font-weight: 600;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .property-grid {
+      padding-top: 8px; display: grid; gap: 10px;
+    }
+    .layer-control-item {
+      background-color: #2a2d32;
+      border-radius: 6px; padding: 0.75rem;
+      display: flex; flex-direction: column; gap: 0.75rem;
+      border: 1px solid #4a4d52;
+    }
+    .opacity-slider-container {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+    }
+    .opacity-slider { flex-grow: 1; }
+    .opacity-value {
+      font-size: 0.8rem; color: #a0a0a0; min-width: 35px; text-align: right;
+    }
+    .basemap-option {
+      display: flex; align-items: center; gap: 0.5rem;
+      background-color: transparent; border: none; color: #a0a0a0;
+      padding: 0.5rem; text-align: left; width: 100%;
+      cursor: pointer; border-radius: 4px;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    .basemap-option:hover {
+      background-color: #3a3d42; color: #f0f0f0;
+    }
+    .basemap-option.active {
+      background-color: #007acc; color: white; font-weight: 600;
+    }
+  `;
+
   return (
-    // Container ຫຼັກຂອງ panel, ຈະເພີ່ມ class 'visible' ເພື່ອໃຫ້ມັນເລື່ອນເຂົ້າມາ
-    <div className={`panel ${isVisible ? "visible" : ""}`}>
-      <div className="panel-section">
-        {/* ຫົວຂໍ້ຂອງ panel (ແບບ static, ຄລິກບໍ່ໄດ້) */}
-        <div className="panel-section-header static">
-          <h3 className="panel-section-header-h3">
-            <Layers size={16} />
-            <span>Base Maps</span>
-          </h3>
-        </div>
-        {/* Container ສຳລັບລາຍການ base maps */}
-        <div className="property-grid">
-          {/* Loop ຜ່ານ array baseMaps ເພື່ອສ້າງລາຍການຄວບຄຸມສຳລັບແຕ່ລະ base map */}
-          {baseMaps.map(({ key, name, icon }) => {
-            // ເອົາສະຖານະປັດຈຸບັນຂອງ layer ຈາກ props
-            const layer = baseLayerStates[key];
-            // ຖ້າບໍ່ມີข้อมูล layer, ບໍ່ຕ້ອງ render
-            if (!layer) return null;
-            return (
-              <div key={key} className="layer-control-item">
-                {/* ປຸ່ມສຳລັບເລືອກ/ຍົກເລີກ base map */}
-                <button
-                  className={`basemap-option ${layer.visible ? "active" : ""}`}
-                  onClick={() => onBaseMapChange(key)}
-                >
-                  {icon}
-                  <span>{name}</span>
-                </button>
-                {/* ແຖບເລື່ອນ Opacity */}
-                <OpacitySlider
-                  opacity={layer.opacity}
-                  onOpacityChange={(value) =>
-                    onBaseMapOpacityChange(key, value)
-                  }
-                  disabled={!layer.visible} // ປິດການໃຊ້ງານຖ້າ layer ບໍ່ໄດ້ສະແດງຜົນ
-                />
-              </div>
-            );
-          })}
+    <>
+      <style>{styles}</style>
+      <div className={`panel ${isVisible ? "visible" : ""}`}>
+        <div className="panel-section">
+          <div className="panel-section-header static">
+            <h3 className="panel-section-header-h3">
+              <Layers size={16} />
+              <span>Base Maps</span>
+            </h3>
+          </div>
+          <div className="property-grid">
+            {baseMaps.map(({ key, name, icon: Icon }) => {
+              const layer = baseLayerStates[key];
+              if (!layer) return null;
+              return (
+                <div key={key} className="layer-control-item">
+                  <button
+                    className={`basemap-option ${
+                      layer.visible ? "active" : ""
+                    }`}
+                    onClick={() => onBaseMapChange(key)}
+                  >
+                    <Icon size={18} /> {/* ໃຊ້ Icon ທີ່ນີ້ */}
+                    <span>{name}</span>
+                  </button>
+                  <OpacitySlider
+                    opacity={layer.opacity}
+                    onOpacityChange={(value) =>
+                      onBaseMapOpacityChange(key, value)
+                    }
+                    disabled={!layer.visible}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
-// ສົ່ງອອກ component ເພື່ອໃຫ້ໄຟລ໌ອື່ນສາມາດນຳໄປໃຊ້ໄດ້
 export default BaseMapPanel;
