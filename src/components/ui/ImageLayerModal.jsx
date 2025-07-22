@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import { X as CloseIcon } from "lucide-react";
+import { X as CloseIcon, UploadCloud } from "lucide-react";
 
-// Component ທີ່ລວມ CSS ໄວ້ໃນຕົວ
 const ImageLayerModal = ({ isVisible, onClose, onAddImage, projections }) => {
   const [imageFile, setImageFile] = useState(null);
+  const [xmlFile, setXmlFile] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
   const [extent, setExtent] = useState({ x1: "", y1: "", x2: "", y2: "" });
   const [selectedProj, setSelectedProj] = useState("WGS84_UTM48N");
@@ -13,6 +13,7 @@ const ImageLayerModal = ({ isVisible, onClose, onAddImage, projections }) => {
   useEffect(() => {
     if (!isVisible) {
       setImageFile(null);
+      setXmlFile(null);
       setImageUrl(null);
       setExtent({ x1: "", y1: "", x2: "", y2: "" });
       if (fileInputRef.current) {
@@ -22,23 +23,115 @@ const ImageLayerModal = ({ isVisible, onClose, onAddImage, projections }) => {
   }, [isVisible]);
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      // Revoke previous object URL to prevent memory leaks
-      if (imageUrl) {
-        URL.revokeObjectURL(imageUrl);
+    const files = e.target.files;
+    if (files.length === 0) return;
+
+    let img, xml;
+    for (const file of files) {
+      if (file.name.toLowerCase().endsWith(".xml")) {
+        xml = file;
+      } else if (
+        [".jpg", ".jpeg", ".png", ".gif"].some((ext) =>
+          file.name.toLowerCase().endsWith(ext)
+        )
+      ) {
+        img = file;
       }
-      setImageUrl(URL.createObjectURL(file));
+    }
+
+    if (img) {
+      setImageFile(img);
+      if (imageUrl) URL.revokeObjectURL(imageUrl);
+      setImageUrl(URL.createObjectURL(img));
+    }
+    if (xml) {
+      setXmlFile(xml);
+    }
+
+    if (img && xml) {
+      processGeoreferencedImage(img, xml);
     }
   };
 
+  const processGeoreferencedImage = (imageFile, xmlFile) => {
+    const xmlReader = new FileReader();
+    xmlReader.onload = (e) => {
+      try {
+        const xmlText = e.target.result;
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+
+        const srsNode = xmlDoc.querySelector("SRS");
+        const geoTransformNode = xmlDoc.querySelector("GeoTransform");
+
+        if (!srsNode || !geoTransformNode) {
+          throw new Error(
+            "The provided XML file does not contain valid SRS or GeoTransform data."
+          );
+        }
+
+        const srsText = srsNode.textContent;
+        const geoTransformText = geoTransformNode.textContent;
+
+        const projMatch = srsText.match(/PROJCS\["([^"]+)"/);
+        if (!projMatch) {
+          throw new Error(
+            "Could not parse projection name from XML's SRS tag."
+          );
+        }
+        const projNameFromXml = projMatch[1];
+
+        const projectionMapping = {
+          Lao97_UTM48: "LAO1997_UTM48N",
+          Lao97_UTM47: "LAO1997_UTM47N",
+        };
+        const projectionKey = projectionMapping[projNameFromXml];
+        if (!projectionKey) {
+          throw new Error(
+            `Projection "${projNameFromXml}" from XML is not supported yet.`
+          );
+        }
+
+        const gt = geoTransformText.split(",").map(Number);
+
+        const img = new Image();
+        img.onload = () => {
+          const width = img.width;
+          const height = img.height;
+
+          const minX = gt[0];
+          const maxY = gt[3];
+          const maxX = gt[0] + width * gt[1] + height * gt[2];
+          const minY = gt[3] + width * gt[4] + height * gt[5];
+
+          const calculatedExtent = [minX, minY, maxX, maxY];
+
+          onAddImage(imageFile, calculatedExtent, projectionKey);
+          onClose();
+        };
+        img.onerror = () => {
+          throw new Error("Could not load image to determine its dimensions.");
+        };
+        img.src = URL.createObjectURL(imageFile);
+      } catch (error) {
+        alert(`Error processing XML file: ${error.message}`);
+        // Reset files if processing fails to allow manual input
+        setImageFile(null);
+        setXmlFile(null);
+        setImageUrl(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    };
+    xmlReader.readAsText(xmlFile);
+  };
+
+  // **ແກ້ໄຂ:** ເພີ່ມ function handleExtentChange ກັບຄືນມາ
   const handleExtentChange = (e) => {
     const { name, value } = e.target;
     setExtent((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAddClick = () => {
+  const handleManualAddClick = () => {
     if (!imageFile || !extent.x1 || !extent.y1 || !extent.x2 || !extent.y2) {
       alert("Please select an image and fill in all coordinate fields.");
       return;
@@ -50,12 +143,11 @@ const ImageLayerModal = ({ isVisible, onClose, onAddImage, projections }) => {
       parseFloat(extent.y2),
     ];
     onAddImage(imageFile, numericExtent, selectedProj);
-    onClose(); // Close after adding
+    onClose();
   };
 
   if (!isVisible) return null;
 
-  // CSS Styles embedded within the component
   const styles = `
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -113,6 +205,14 @@ const ImageLayerModal = ({ isVisible, onClose, onAddImage, projections }) => {
     .modal-button:hover { background-color: #00aaff; }
     .modal-button-secondary { background-color: #4a4d52; color: #f0f0f0; }
     .modal-button-secondary:hover { background-color: #5a5d62; }
+    .file-input-label {
+        border: 2px dashed #4a4d52; border-radius: 8px;
+        padding: 2rem; text-align: center; color: #a0a0a0;
+        cursor: pointer; transition: all 0.2s ease;
+    }
+    .file-input-label:hover {
+        border-color: #00aaff; background-color: #3a3d42; color: #f0f0f0;
+    }
   `;
 
   return (
@@ -126,94 +226,106 @@ const ImageLayerModal = ({ isVisible, onClose, onAddImage, projections }) => {
           <h2 className="modal-title">Import Cadastral Map Image</h2>
 
           <div className="form-group">
-            <label>Select Image File</label>
+            <label>Select Image File (and optional .xml)</label>
+            <label htmlFor="image-input" className="file-input-label">
+              <UploadCloud size={24} style={{ margin: "0 auto 0.5rem auto" }} />
+              {imageFile
+                ? `Selected: ${imageFile.name}${xmlFile ? " (+ XML)" : ""}`
+                : "Click to select files"}
+            </label>
             <input
+              id="image-input"
               type="file"
-              accept="image/png, image/jpeg, image/gif"
+              accept="image/png, image/jpeg, image/gif, .xml"
               onChange={handleFileChange}
               ref={fileInputRef}
-              className="modal-input"
+              multiple
+              style={{ display: "none" }}
             />
           </div>
 
-          {imageUrl && (
+          {imageUrl && !xmlFile && (
             <div className="image-preview">
               <img src={imageUrl} alt="Preview" />
             </div>
           )}
 
-          <div className="form-group">
-            <label>Coordinate System of Input</label>
-            <select
-              value={selectedProj}
-              onChange={(e) => setSelectedProj(e.target.value)}
-            >
-              {projections.map((p) => (
-                <option key={p.key} value={p.key}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {imageFile && !xmlFile && (
+            <>
+              <div className="form-group">
+                <label>Coordinate System of Input</label>
+                <select
+                  value={selectedProj}
+                  onChange={(e) => setSelectedProj(e.target.value)}
+                >
+                  {projections.map((p) => (
+                    <option key={p.key} value={p.key}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <p style={{ marginTop: "1rem", color: "#a0a0a0" }}>
-            Enter the map coordinates for the corners of the image:
-          </p>
-          <div className="coordinate-grid">
-            <div className="form-group">
-              <label>Bottom-Left X (Easting)</label>
-              <input
-                type="number"
-                name="x1"
-                value={extent.x1}
-                onChange={handleExtentChange}
-                placeholder="e.g., 482855"
-                className="modal-input"
-              />
-            </div>
-            <div className="form-group">
-              <label>Bottom-Left Y (Northing)</label>
-              <input
-                type="number"
-                name="y1"
-                value={extent.y1}
-                onChange={handleExtentChange}
-                placeholder="e.g., 1986445"
-                className="modal-input"
-              />
-            </div>
-            <div className="form-group">
-              <label>Top-Right X (Easting)</label>
-              <input
-                type="number"
-                name="x2"
-                value={extent.x2}
-                onChange={handleExtentChange}
-                placeholder="e.g., 482955"
-                className="modal-input"
-              />
-            </div>
-            <div className="form-group">
-              <label>Top-Right Y (Northing)</label>
-              <input
-                type="number"
-                name="y2"
-                value={extent.y2}
-                onChange={handleExtentChange}
-                placeholder="e.g., 1986545"
-                className="modal-input"
-              />
-            </div>
-          </div>
+              <p style={{ marginTop: "1rem", color: "#a0a0a0" }}>
+                Enter the map coordinates for the corners of the image:
+              </p>
+              <div className="coordinate-grid">
+                <div className="form-group">
+                  <label>Bottom-Left X (Easting)</label>
+                  <input
+                    type="number"
+                    name="x1"
+                    value={extent.x1}
+                    onChange={handleExtentChange}
+                    placeholder="e.g., 482855"
+                    className="modal-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Bottom-Left Y (Northing)</label>
+                  <input
+                    type="number"
+                    name="y1"
+                    value={extent.y1}
+                    onChange={handleExtentChange}
+                    placeholder="e.g., 1986445"
+                    className="modal-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Top-Right X (Easting)</label>
+                  <input
+                    type="number"
+                    name="x2"
+                    value={extent.x2}
+                    onChange={handleExtentChange}
+                    placeholder="e.g., 482955"
+                    className="modal-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Top-Right Y (Northing)</label>
+                  <input
+                    type="number"
+                    name="y2"
+                    value={extent.y2}
+                    onChange={handleExtentChange}
+                    placeholder="e.g., 1986545"
+                    className="modal-input"
+                  />
+                </div>
+              </div>
 
-          <div className="modal-footer">
-            <button className="modal-button-secondary" onClick={onClose}>
-              Cancel
-            </button>
-            <button className="modal-button" onClick={handleAddClick}>
-              Add to Map
-            </button>
-          </div>
+              <div className="modal-footer">
+                <button className="modal-button-secondary" onClick={onClose}>
+                  Cancel
+                </button>
+                <button className="modal-button" onClick={handleManualAddClick}>
+                  Add to Map
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </>

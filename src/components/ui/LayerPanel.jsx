@@ -160,10 +160,12 @@ const LayerPanel = ({
       layerToZoom.features.length > 0
     ) {
       const source = new VectorSource({ features: layerToZoom.features });
-      mapInstance.getView().fit(source.getExtent(), {
-        padding: [100, 100, 100, 100],
-        duration: 1000,
-      });
+      mapInstance
+        .getView()
+        .fit(source.getExtent(), {
+          padding: [100, 100, 100, 100],
+          duration: 1000,
+        });
     }
   };
 
