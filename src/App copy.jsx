@@ -4,7 +4,6 @@ import MapComponent from "./components/MapComponent";
 import StatusBar from "./components/StatusBar";
 import LayerPanel from "./components/ui/LayerPanel";
 import BaseMapPanel from "./components/ui/BaseMapPanel";
-import TimeSliderPanel from "./components/ui/TimeSliderPanel";
 import ImportDataModal from "./components/ui/ImportDataModal";
 import AttributePanel from "./components/ui/AttributePanel";
 import StyleEditorModal from "./components/ui/StyleEditorModal";
@@ -14,7 +13,7 @@ import ImageEditorModal from "./components/ui/ImageEditorModal";
 import "./App.css";
 import shp from "shpjs";
 import { KML, GeoJSON } from "ol/format";
-import { fromLonLat } from "ol/proj";
+import { fromLonLat, transformExtent, get as getProjection } from "ol/proj";
 import { register } from "ol/proj/proj4";
 import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
@@ -54,7 +53,7 @@ const projectionDefs = [
   ],
 ];
 proj4.defs(projectionDefs);
-register(proj4);
+register(proj4); // Register proj4 with OpenLayers
 
 const utmProjections = [
   { key: "WGS84_UTM47N", name: "WGS 84 / UTM zone 47N" },
@@ -67,6 +66,7 @@ const utmProjections = [
 ];
 
 function App() {
+  // --- State Management ---
   const [activeTool, setActiveTool] = useState("pan");
   const [activeTab, setActiveTab] = useState("home");
   const [mapInstance, setMapInstance] = useState(null);
@@ -74,17 +74,14 @@ function App() {
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [importedLayers, setImportedLayers] = useState([]);
   const [imageLayers, setImageLayers] = useState([]);
-  const [isImageModalVisible, setIsImageModalVisible] = useState(false);
   const [isImageEditorModalVisible, setIsImageEditorModalVisible] =
     useState(false);
   const [editingImageLayer, setEditingImageLayer] = useState(null);
+  const [isImageModalVisible, setIsImageModalVisible] = useState(false);
   const [isExportModalVisible, setIsExportModalVisible] = useState(false);
   const [graticuleEnabled, setGraticuleEnabled] = useState(false);
   const [graticuleType, setGraticuleType] = useState("WGS84");
   const [showGraticuleOptions, setShowGraticuleOptions] = useState(false);
-  const [isHistoricalLayerActive, setIsHistoricalLayerActive] = useState(false);
-  const [isTimeSliderVisible, setIsTimeSliderVisible] = useState(false);
-  const [selectedDate, setSelectedDate] = useState("2024-01-01");
   const [selectedFeatureInfo, setSelectedFeatureInfo] = useState(null);
   const [isStyleEditorVisible, setIsStyleEditorVisible] = useState(false);
   const [stylingLayer, setStylingLayer] = useState(null);
@@ -98,6 +95,7 @@ function App() {
     carto: { name: "Carto Voyager", visible: false, opacity: 1 },
   });
 
+  // --- Handlers for Map Actions ---
   const getLayerByName = useCallback(
     (name) => {
       if (!mapInstance) return null;
@@ -165,6 +163,7 @@ function App() {
     }
   }, [mapInstance]);
 
+  // --- Other Handlers ---
   const handleBaseMapChange = (baseMapKey) => {
     setBaseLayerStates((prevStates) => {
       const newStates = { ...prevStates };
@@ -356,29 +355,26 @@ function App() {
       }
     }
 
-    const [minX, minY, maxX, maxY] = extent;
-    const transformedMin = proj4(projectionKey, "EPSG:3857").forward([
-      minX,
-      minY,
-    ]);
-    const transformedMax = proj4(projectionKey, "EPSG:3857").forward([
-      maxX,
-      maxY,
-    ]);
-    const transformedExtent = [
-      transformedMin[0],
-      transformedMin[1],
-      transformedMax[0],
-      transformedMax[1],
-    ];
+    const sourceProjection = getProjection(projectionKey);
+    const mapProjection = getProjection("EPSG:3857");
 
+    if (!sourceProjection) {
+      alert(`Error: The projection "${projectionKey}" is not defined.`);
+      return;
+    }
+
+    const transformedExtent = transformExtent(
+      extent,
+      sourceProjection,
+      mapProjection
+    );
     const newImageLayer = {
       id: uuidv4(),
       name: file.name,
       url: imageUrl,
-      extent: transformedExtent,
-      originalExtent: extent,
-      projectionKey: projectionKey,
+      extent: transformedExtent, // Transformed extent for map display
+      originalExtent: extent, // Store original extent for re-projection
+      projectionKey: projectionKey, // Store the key used for this transformation
       visible: true,
       opacity: 1.0,
     };
@@ -408,25 +404,27 @@ function App() {
       newProjectionInfo.key &&
       newProjectionInfo.def
     ) {
-      proj4.defs(newProjectionKey, newProjectionInfo.def);
-      register(proj4);
+      if (!proj4.defs(newProjectionKey)) {
+        proj4.defs(newProjectionKey, newProjectionInfo.def);
+        register(proj4);
+      }
     }
 
-    const [minX, minY, maxX, maxY] = layerToUpdate.originalExtent;
-    const transformedMin = proj4(newProjectionKey, "EPSG:3857").forward([
-      minX,
-      minY,
-    ]);
-    const transformedMax = proj4(newProjectionKey, "EPSG:3857").forward([
-      maxX,
-      maxY,
-    ]);
-    const newTransformedExtent = [
-      transformedMin[0],
-      transformedMin[1],
-      transformedMax[0],
-      transformedMax[1],
-    ];
+    const sourceProjection = getProjection(newProjectionKey);
+    const mapProjection = getProjection("EPSG:3857");
+
+    if (!sourceProjection) {
+      alert(
+        `Error: The new projection "${newProjectionKey}" could not be defined.`
+      );
+      return;
+    }
+
+    const newTransformedExtent = transformExtent(
+      layerToUpdate.originalExtent,
+      sourceProjection,
+      mapProjection
+    );
 
     setImageLayers((prevLayers) =>
       prevLayers.map((l) =>
@@ -445,10 +443,6 @@ function App() {
 
   const handleExportData = useCallback((layerId, format) => {
     console.log(`Exporting layer ${layerId} in ${format} format.`);
-  }, []);
-  const toggleHistoricalLayer = useCallback((isActive) => {
-    setIsHistoricalLayerActive(isActive);
-    setIsTimeSliderVisible(isActive);
   }, []);
   const handleFeatureSelect = (info) => {
     setSelectedFeatureInfo(info);
@@ -479,9 +473,6 @@ function App() {
         setActiveTab={setActiveTab}
         activePanel={activePanel}
         setActivePanel={setActivePanel}
-        isTimeSliderVisible={isTimeSliderVisible}
-        setIsTimeSliderVisible={setIsTimeSliderVisible}
-        toggleHistoricalLayer={toggleHistoricalLayer}
         setIsImportModalVisible={setIsImportModalVisible}
         setIsImageModalVisible={setIsImageModalVisible}
         setIsExportModalVisible={setIsExportModalVisible}
@@ -497,8 +488,6 @@ function App() {
           setMapInstance={setMapInstance}
           graticuleEnabled={graticuleEnabled}
           graticuleType={graticuleType}
-          isHistoricalLayerActive={isHistoricalLayerActive}
-          selectedDate={selectedDate}
           importedLayers={importedLayers}
           imageLayers={imageLayers}
           baseLayerStates={baseLayerStates}
@@ -558,11 +547,6 @@ function App() {
         layer={stylingLayer}
         onClose={() => setIsStyleEditorVisible(false)}
         onSave={handleStyleSave}
-      />
-      <TimeSliderPanel
-        isVisible={isTimeSliderVisible}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
       />
       <StatusBar
         graticuleEnabled={graticuleEnabled}

@@ -6,6 +6,8 @@ import TileLayer from "ol/layer/Tile";
 import XYZ from "ol/source/XYZ";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
+import ImageLayer from "ol/layer/Image";
+import ImageStatic from "ol/source/ImageStatic";
 import {
   fromLonLat,
   toLonLat,
@@ -24,7 +26,6 @@ import Graticule from "ol/layer/Graticule";
 import { Style, Fill, Stroke, Text, Circle as CircleStyle } from "ol/style";
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
-import TileWMS from "ol/source/TileWMS";
 import { getArea, getLength } from "ol/sphere";
 import Overlay from "ol/Overlay";
 import { unByKey } from "ol/Observable";
@@ -42,11 +43,10 @@ const MapComponent = ({
   setMapInstance,
   graticuleEnabled,
   graticuleType,
-  isHistoricalLayerActive,
-  selectedDate,
   importedLayers,
   baseLayerStates,
   onFeatureSelect,
+  imageLayers, // **ອັບເດດ:** ຮັບ prop ໃໝ່
 }) => {
   const mapRef = useRef();
   const olMap = useRef(null);
@@ -79,15 +79,9 @@ const MapComponent = ({
       }),
       new TileLayer({
         source: new XYZ({
-          url: "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}.jpg",
-          attributions: [
-            "© CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data)",
-            '© <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a>',
-            '© <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a>',
-            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-          ].join(" | "),
+          url: "https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png",
         }),
-        name: "topo", // ຍັງໃຊ້ຊື່ "topo" ເພື່ອຮອງຮັບການເຂົ້າກັນໄດ້ກັບ code ເກົ່າ
+        name: "topo",
         visible: false,
       }),
       new TileLayer({
@@ -152,15 +146,11 @@ const MapComponent = ({
       ],
       view: new View({ center: fromLonLat([102.6, 17.97]), zoom: 7 }),
       controls: [],
-      // **ການແກ້ໄຂ:** ເພີ່ມ option ນີ້ເພື່ອປັບປຸງປະສິດທິພາບ
-      contextOptions: {
-        willReadFrequently: true,
-      },
+      contextOptions: { willReadFrequently: true },
     });
 
     setMapInstance(olMap.current);
 
-    // Create the initial tooltip for measurements
     const tooltipElement = document.createElement("div");
     tooltipElement.className = "ol-tooltip ol-tooltip-measure";
     const tooltip = new Overlay({
@@ -179,7 +169,7 @@ const MapComponent = ({
     };
   }, [setMapInstance]);
 
-  // --- Effect to manage Base, Historical, and Imported Layers ---
+  // --- Effect to manage Base, Vector, and Image Layers ---
   useEffect(() => {
     if (!olMap.current) return;
 
@@ -193,68 +183,65 @@ const MapComponent = ({
       }
     });
 
-    // Historical Layer
-    const existingHistoricalLayer = olMap.current
-      .getLayers()
-      .getArray()
-      .find((l) => l.get("name") === "historicalLayer");
-    if (existingHistoricalLayer)
-      olMap.current.removeLayer(existingHistoricalLayer);
-    if (isHistoricalLayerActive) {
-      const date = new Date(selectedDate);
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const firstDay = new Date(year, month, 1).toISOString().split("T")[0];
-      const lastDay = new Date(year, month + 1, 0).toISOString().split("T")[0];
-      const timeRange = `${firstDay}/${lastDay}`;
-      const newHistoricalLayer = new TileLayer({
-        name: "sentinel 2",
-        visible: true,
-        source: new TileWMS({
-          url: "https://services.sentinel-hub.com/ogc/wms/5aadfeac-8c28-45a4-8f5e-d6341e60fab5", // Note: This is a public test ID
-          params: {
-            LAYERS: "2_TONEMAPPED_NATURAL_COLOR",
-            TIME: timeRange,
-            MAXCC: 80,
-          },
-          crossOrigin: "anonymous",
-        }),
-      });
-      olMap.current.addLayer(newHistoricalLayer);
-      newHistoricalLayer.setZIndex(0);
-    }
-
-    // Imported Layers
+    // Imported Vector Layers
     olMap.current
       .getLayers()
       .getArray()
       .filter((l) => l.get("isImportedLayer"))
       .forEach((l) => olMap.current.removeLayer(l));
-    importedLayers.forEach((layerData) => {
-      const vectorLayer = new VectorLayer({
-        source: new VectorSource({ features: layerData.features }),
-        name: layerData.name,
-        visible: layerData.visible,
-        opacity: layerData.opacity,
-        style: new Style({
-          fill: new Fill({
-            color: layerData.style?.fillColor || "rgba(255, 0, 255, 0.4)",
+    if (importedLayers) {
+      importedLayers.forEach((layerData) => {
+        const vectorLayer = new VectorLayer({
+          source: new VectorSource({ features: layerData.features }),
+          name: layerData.name,
+          visible: layerData.visible,
+          opacity: layerData.opacity,
+          style: new Style({
+            fill: new Fill({
+              color: layerData.style?.fillColor || "rgba(255, 0, 255, 0.4)",
+            }),
+            stroke: new Stroke({
+              color: layerData.style?.strokeColor || "#ff00ff",
+              width: layerData.style?.strokeWidth || 3,
+            }),
+            image: new CircleStyle({
+              radius: layerData.style?.pointSize || 7,
+              fill: new Fill({
+                color: layerData.style?.pointColor || "#ff00ff",
+              }),
+            }),
           }),
-          stroke: new Stroke({
-            color: layerData.style?.strokeColor || "#ff00ff",
-            width: layerData.style?.strokeWidth || 3,
-          }),
-          image: new CircleStyle({
-            radius: layerData.style?.pointSize || 7,
-            fill: new Fill({ color: layerData.style?.pointColor || "#ff00ff" }),
-          }),
-        }),
+        });
+        vectorLayer.set("isImportedLayer", true);
+        vectorLayer.set("id", layerData.id);
+        olMap.current.addLayer(vectorLayer);
       });
-      vectorLayer.set("isImportedLayer", true);
-      vectorLayer.set("id", layerData.id);
-      olMap.current.addLayer(vectorLayer);
-    });
-  }, [baseLayerStates, selectedDate, isHistoricalLayerActive, importedLayers]);
+    }
+
+    // **ອັບເດດ:** ເພີ່ມ Logic ສຳລັບການສະແດງ Image Layers
+    olMap.current
+      .getLayers()
+      .getArray()
+      .filter((l) => l.get("isImageLayer"))
+      .forEach((l) => olMap.current.removeLayer(l));
+    if (imageLayers) {
+      imageLayers.forEach((layerData) => {
+        const imageLayer = new ImageLayer({
+          source: new ImageStatic({
+            url: layerData.url,
+            imageExtent: layerData.extent,
+            projection: "EPSG:3857",
+          }),
+          opacity: layerData.opacity,
+          visible: layerData.visible,
+        });
+        imageLayer.set("isImageLayer", true);
+        imageLayer.set("id", layerData.id);
+        imageLayer.set("name", layerData.name);
+        olMap.current.addLayer(imageLayer);
+      });
+    }
+  }, [baseLayerStates, importedLayers, imageLayers]); // **ອັບເດດ:** ເພີ່ມ imageLayers ເຂົ້າໄປໃນ dependency array
 
   // --- Coordinate and Scale Display Effect ---
   useEffect(() => {
@@ -267,18 +254,15 @@ const MapComponent = ({
       let displayText = "";
       if (graticuleType === "UTM") {
         const lonLat = toLonLat(evt.coordinate);
-        const longitude = lonLat[0];
-        const latitude = lonLat[1];
-        const zone = Math.floor((longitude + 180) / 6) + 1;
-        const hemisphere = latitude >= 0 ? "N" : "S";
-        if (hemisphere === "N" && (zone === 47 || zone === 48)) {
+        const zone = Math.floor((lonLat[0] + 180) / 6) + 1;
+        if (lonLat[1] >= 0 && (zone === 47 || zone === 48)) {
           const utmProjection = `EPSG:326${zone}`;
           const utmCoords = transform(
             evt.coordinate,
             "EPSG:3857",
             utmProjection
           );
-          displayText = `Zone ${zone}${hemisphere} ${utmCoords[0].toFixed(
+          displayText = `Zone ${zone}N ${utmCoords[0].toFixed(
             0
           )}m E ${utmCoords[1].toFixed(0)}m N`;
         } else {
@@ -313,7 +297,6 @@ const MapComponent = ({
   useEffect(() => {
     if (!olMap.current) return;
     const map = olMap.current;
-
     const updateUtmGrid = () => {
       utmLabelSource.current.clear();
       utmGridLineSource.current.clear();
@@ -328,7 +311,7 @@ const MapComponent = ({
       const interval = Math.pow(
         10,
         Math.floor(Math.log10(view.getResolution() * 500))
-      ); // Dynamic interval
+      );
       const labelFeatures = [];
       const lineFeatures = [];
       const textStyle = {
@@ -336,7 +319,6 @@ const MapComponent = ({
         fill: new Fill({ color: "#444" }),
         stroke: new Stroke({ color: "rgba(255,255,255,0.8)", width: 2 }),
       };
-
       for (
         let n = Math.ceil(utmExtent[1] / interval) * interval;
         n <= utmExtent[3];
@@ -398,7 +380,6 @@ const MapComponent = ({
       utmLabelSource.current.addFeatures(labelFeatures);
       utmGridLineSource.current.addFeatures(lineFeatures);
     };
-
     const cleanup = () => {
       if (graticuleLayer.current) {
         map.removeLayer(graticuleLayer.current);
@@ -408,9 +389,7 @@ const MapComponent = ({
       utmGridLineSource.current.clear();
       map.un("moveend", updateUtmGrid);
     };
-
     cleanup();
-
     if (graticuleEnabled) {
       if (graticuleType === "UTM") {
         map.on("moveend", updateUtmGrid);
@@ -442,37 +421,34 @@ const MapComponent = ({
     return cleanup;
   }, [graticuleEnabled, graticuleType]);
 
-  // --- Tool Activation Effect (MERGED) ---
+  // --- Tool Activation Effect ---
   useEffect(() => {
     if (!olMap.current) return;
     const map = olMap.current;
 
-    // --- 1. Cleanup previous interactions and listeners ---
     if (drawInteractionRef.current)
       map.removeInteraction(drawInteractionRef.current);
     if (modifyInteractionRef.current)
       map.removeInteraction(modifyInteractionRef.current);
     if (selectInteractionRef.current)
       map.removeInteraction(selectInteractionRef.current);
-    const identifyListeners = map.getListeners("singleclick");
-    if (identifyListeners) identifyListeners.length = 0;
+    map
+      .getListeners("singleclick")
+      ?.forEach((listener) => map.un("singleclick", listener[0]));
 
-    // --- 2. Cleanup measurement artifacts ---
     measureLayerRef.current.getSource().clear();
-    const overlays = map.getOverlays();
-    while (overlays.getLength() > 1) {
-      overlays.removeAt(1);
-    }
-    const mainTooltipOverlay = overlays.item(0);
-    if (mainTooltipOverlay) {
-      const mainTooltipElement = mainTooltipOverlay.getElement();
-      mainTooltipElement.className = "ol-tooltip ol-tooltip-measure";
-      mainTooltipOverlay.setPosition(undefined);
+    const overlays = map.getOverlays().getArray().slice(1);
+    overlays.forEach((overlay) => map.removeOverlay(overlay));
+
+    const mainTooltip = measureTooltipRef.current;
+    if (mainTooltip) {
+      mainTooltip.element.className = "ol-tooltip ol-tooltip-measure";
+      mainTooltip.overlay.setPosition(undefined);
     }
 
-    // --- 3. Define tool logic ---
     let sketch;
     let listener;
+
     const formatLength = (line) => {
       const length = getLength(line, { projection: "EPSG:3857" });
       return length > 100
@@ -485,6 +461,7 @@ const MapComponent = ({
         ? `${(area / 1000000).toFixed(2)} km²`
         : `${area.toFixed(2)} m²`;
     };
+
     const addMeasureInteraction = (type) => {
       const draw = new Draw({
         source: measureLayerRef.current.getSource(),
@@ -515,16 +492,15 @@ const MapComponent = ({
             geom instanceof Polygon
               ? geom.getInteriorPoint().getCoordinates()
               : geom.getLastCoordinate();
-          measureTooltipRef.current.element.innerHTML = output;
-          measureTooltipRef.current.overlay.setPosition(tooltipCoord);
+          mainTooltip.element.innerHTML = output;
+          mainTooltip.overlay.setPosition(tooltipCoord);
         });
       });
 
       draw.on("drawend", (evt) => {
         const staticTooltipElement = document.createElement("div");
         staticTooltipElement.className = "ol-tooltip ol-tooltip-static";
-        staticTooltipElement.innerHTML =
-          measureTooltipRef.current.element.innerHTML;
+        staticTooltipElement.innerHTML = mainTooltip.element.innerHTML;
         const geom = evt.feature.getGeometry();
         const position =
           geom instanceof Polygon
@@ -541,11 +517,11 @@ const MapComponent = ({
         sketch = null;
       });
     };
+
     const identifyClickListener = (evt) => {
       const features = [];
       map.forEachFeatureAtPixel(evt.pixel, (feature, layer) => {
-        if (layer !== measureLayerRef.current) {
-          // Ignore measurement features
+        if (layer && layer !== measureLayerRef.current) {
           features.push(feature);
         }
       });
@@ -559,7 +535,6 @@ const MapComponent = ({
       );
     };
 
-    // --- 4. Activate new tool ---
     switch (activeTool) {
       case "draw-point":
       case "draw-line":
@@ -581,7 +556,7 @@ const MapComponent = ({
       case "edit": {
         selectInteractionRef.current = new Select({
           condition: click,
-          layers: [vectorLayerRef.current],
+          layers: (layer) => !layer.get("isImageLayer"),
         });
         map.addInteraction(selectInteractionRef.current);
         modifyInteractionRef.current = new Modify({
@@ -599,7 +574,6 @@ const MapComponent = ({
       case "identify":
         map.on("singleclick", identifyClickListener);
         break;
-      case "pan":
       default:
         break;
     }

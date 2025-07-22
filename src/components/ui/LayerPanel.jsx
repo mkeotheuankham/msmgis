@@ -8,6 +8,7 @@ import {
   EyeOff,
   Palette,
   Image as ImageIcon,
+  Settings, // Import Settings icon for the editor
 } from "lucide-react";
 import VectorSource from "ol/source/Vector";
 
@@ -91,6 +92,7 @@ const ImageLayerControls = ({
   onOpacityChange,
   onRemove,
   onZoom,
+  onImageEdit,
 }) => (
   <div className="layer-control-item">
     <div className="layer-control-header">
@@ -98,6 +100,12 @@ const ImageLayerControls = ({
         {layer.name}
       </span>
       <div className="layer-actions">
+        <button
+          onClick={() => onImageEdit(layer.id)}
+          title="Edit Layer Properties"
+        >
+          <Settings size={16} />
+        </button>
         <button
           onClick={() => onVisibilityChange(layer.id, !layer.visible)}
           title={layer.visible ? "Hide Layer" : "Show Layer"}
@@ -130,6 +138,7 @@ const LayerPanel = ({
   setImageLayers,
   mapInstance,
   onStyleEdit,
+  onImageEdit,
 }) => {
   const [expandedSections, setExpandedSections] = useState({
     vectors: true,
@@ -334,6 +343,7 @@ const LayerPanel = ({
                     onOpacityChange={handleImageOpacityChange}
                     onRemove={handleImageRemove}
                     onZoom={handleImageZoom}
+                    onImageEdit={onImageEdit}
                   />
                 ))
               ) : (
