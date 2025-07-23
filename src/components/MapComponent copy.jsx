@@ -21,8 +21,7 @@ import LineString from "ol/geom/LineString";
 import Polygon from "ol/geom/Polygon";
 import Feature from "ol/Feature";
 import { Draw, Modify, Select } from "ol/interaction";
-// **ອັບເດດ:** ນຳເຂົ້າ pointerMove condition
-import { click, pointerMove } from "ol/events/condition";
+import { click } from "ol/events/condition";
 import Graticule from "ol/layer/Graticule";
 import { Style, Fill, Stroke, Text, Circle as CircleStyle } from "ol/style";
 import proj4 from "proj4";
@@ -31,8 +30,10 @@ import { getArea, getLength } from "ol/sphere";
 import Overlay from "ol/Overlay";
 import { unByKey } from "ol/Observable";
 
+// Import custom styles for the measurement tool
 import "./ui/MeasureTooltip.css";
 
+// --- Register UTM projections for Laos (Zones 47N and 48N) ---
 proj4.defs("EPSG:32647", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs");
 proj4.defs("EPSG:32648", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
 register(proj4);
@@ -45,19 +46,19 @@ const MapComponent = ({
   importedLayers,
   baseLayerStates,
   onFeatureSelect,
-  imageLayers,
+  imageLayers, // **ອັບເດດ:** ຮັບ prop ໃໝ່
 }) => {
   const mapRef = useRef();
   const olMap = useRef(null);
   const drawInteractionRef = useRef(null);
   const modifyInteractionRef = useRef(null);
-  const selectClickInteractionRef = useRef(null); // Renamed for clarity
-  const vectorLayerRef = useRef(null);
-  const measureLayerRef = useRef(null);
+  const selectInteractionRef = useRef(null);
+  const vectorLayerRef = useRef(null); // For user drawings
+  const measureLayerRef = useRef(null); // For measurement drawings
   const graticuleLayer = useRef(null);
   const utmLabelSource = useRef(new VectorSource());
   const utmGridLineSource = useRef(new VectorSource());
-  const measureTooltipRef = useRef(null);
+  const measureTooltipRef = useRef(null); // For measurement tooltips
 
   // --- Initial Map Setup ---
   useEffect(() => {
@@ -78,7 +79,14 @@ const MapComponent = ({
       }),
       new TileLayer({
         source: new XYZ({
-          url: "https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png",
+          url: "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}.jpg",
+          maxZoom: 20,
+          attributions: [
+            "© CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data)",
+            '© <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a>',
+            '© <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a>',
+            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          ].join(" | "),
         }),
         name: "topo",
         visible: false,
@@ -168,61 +176,6 @@ const MapComponent = ({
     };
   }, [setMapInstance]);
 
-  // **ອັບເດດ:** Effect ໃໝ່ສຳລັບ Hover
-  useEffect(() => {
-    if (!olMap.current) return;
-    const map = olMap.current;
-
-    const hoverStyle = new Style({
-      fill: new Fill({
-        color: "rgba(0, 170, 255, 0.4)",
-      }),
-      stroke: new Stroke({
-        color: "#00aaff",
-        width: 4,
-      }),
-      image: new CircleStyle({
-        radius: 9,
-        fill: new Fill({ color: "#00aaff" }),
-        stroke: new Stroke({ color: "#ffffff", width: 2 }),
-      }),
-    });
-
-    const selectHover = new Select({
-      condition: pointerMove,
-      style: hoverStyle,
-      layers: (layer) => {
-        // Allow hover on vector layers that are not for measuring
-        return (
-          layer.get("isImportedLayer") || layer.get("name") === "editorLayer"
-        );
-      },
-    });
-
-    map.addInteraction(selectHover);
-
-    // Change cursor on hover
-    const pointerMoveHandler = (e) => {
-      if (e.dragging) return;
-      const pixel = map.getEventPixel(e.originalEvent);
-      const hit = map.hasFeatureAtPixel(pixel, {
-        layerFilter: (layer) =>
-          layer.get("isImportedLayer") || layer.get("name") === "editorLayer",
-      });
-      map.getTargetElement().style.cursor = hit ? "pointer" : "";
-    };
-
-    map.on("pointermove", pointerMoveHandler);
-
-    return () => {
-      map.removeInteraction(selectHover);
-      map.un("pointermove", pointerMoveHandler);
-      if (map.getTargetElement()) {
-        map.getTargetElement().style.cursor = "";
-      }
-    };
-  }, []); // Runs only once after the map is created
-
   // --- Effect to manage Base, Vector, and Image Layers ---
   useEffect(() => {
     if (!olMap.current) return;
@@ -272,7 +225,7 @@ const MapComponent = ({
       });
     }
 
-    // Imported Image Layers
+    // **ອັບເດດ:** ເພີ່ມ Logic ສຳລັບການສະແດງ Image Layers
     olMap.current
       .getLayers()
       .getArray()
@@ -295,7 +248,7 @@ const MapComponent = ({
         olMap.current.addLayer(imageLayer);
       });
     }
-  }, [baseLayerStates, importedLayers, imageLayers]);
+  }, [baseLayerStates, importedLayers, imageLayers]); // **ອັບເດດ:** ເພີ່ມ imageLayers ເຂົ້າໄປໃນ dependency array
 
   // --- Coordinate and Scale Display Effect ---
   useEffect(() => {
@@ -484,8 +437,8 @@ const MapComponent = ({
       map.removeInteraction(drawInteractionRef.current);
     if (modifyInteractionRef.current)
       map.removeInteraction(modifyInteractionRef.current);
-    if (selectClickInteractionRef.current)
-      map.removeInteraction(selectClickInteractionRef.current);
+    if (selectInteractionRef.current)
+      map.removeInteraction(selectInteractionRef.current);
     map
       .getListeners("singleclick")
       ?.forEach((listener) => map.un("singleclick", listener[0]));
@@ -575,11 +528,7 @@ const MapComponent = ({
     const identifyClickListener = (evt) => {
       const features = [];
       map.forEachFeatureAtPixel(evt.pixel, (feature, layer) => {
-        if (
-          layer &&
-          layer !== measureLayerRef.current &&
-          !layer.get("isImageLayer")
-        ) {
+        if (layer && layer !== measureLayerRef.current) {
           features.push(feature);
         }
       });
@@ -612,14 +561,13 @@ const MapComponent = ({
         break;
       }
       case "edit": {
-        selectClickInteractionRef.current = new Select({
+        selectInteractionRef.current = new Select({
           condition: click,
-          layers: (layer) =>
-            layer.get("isImportedLayer") || layer.get("name") === "editorLayer",
+          layers: (layer) => !layer.get("isImageLayer"),
         });
-        map.addInteraction(selectClickInteractionRef.current);
+        map.addInteraction(selectInteractionRef.current);
         modifyInteractionRef.current = new Modify({
-          features: selectClickInteractionRef.current.getFeatures(),
+          features: selectInteractionRef.current.getFeatures(),
         });
         map.addInteraction(modifyInteractionRef.current);
         break;
