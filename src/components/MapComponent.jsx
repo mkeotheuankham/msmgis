@@ -21,14 +21,13 @@ import LineString from "ol/geom/LineString";
 import Polygon from "ol/geom/Polygon";
 import MultiPoint from "ol/geom/MultiPoint";
 import Feature from "ol/Feature";
-import { Draw, Modify, Select } from "ol/interaction";
+import { Draw, Modify, Select, Snap } from "ol/interaction";
 import { click, pointerMove } from "ol/events/condition";
 import Graticule from "ol/layer/Graticule";
 import { Style, Fill, Stroke, Text, Circle as CircleStyle } from "ol/style";
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
 import { getArea, getLength } from "ol/sphere";
-import Overlay from "ol/Overlay";
 import { unByKey } from "ol/Observable";
 
 import "./ui/MeasureTooltip.css";
@@ -53,13 +52,15 @@ const MapComponent = ({
   const drawInteractionRef = useRef(null);
   const modifyInteractionRef = useRef(null);
   const selectClickInteractionRef = useRef(null);
+  const snapInteractionRef = useRef(null);
+  const hoverInteractionRef = useRef(null);
   const vectorLayerRef = useRef(null);
-  const measureLayerRef = useRef(null);
   const graticuleLayer = useRef(null);
   const utmLabelSource = useRef(new VectorSource());
   const utmGridLineSource = useRef(new VectorSource());
-  const measureTooltipRef = useRef(null);
   const selectionMeasureLayerRef = useRef(null);
+  const identifyListenerKey = useRef(null);
+  const geometryListenerKeys = useRef({});
 
   // --- Initial Map Setup ---
   useEffect(() => {
@@ -112,10 +113,6 @@ const MapComponent = ({
       source: new VectorSource(),
       name: "editorLayer",
     });
-    measureLayerRef.current = new VectorLayer({
-      source: new VectorSource(),
-      name: "measureLayer",
-    });
 
     selectionMeasureLayerRef.current = new VectorLayer({
       source: new VectorSource(),
@@ -151,7 +148,6 @@ const MapComponent = ({
       layers: [
         ...baseLayers,
         vectorLayerRef.current,
-        measureLayerRef.current,
         selectionMeasureLayerRef.current,
         utmGridLineLayer,
         utmLabelLayer,
@@ -163,16 +159,6 @@ const MapComponent = ({
 
     setMapInstance(olMap.current);
 
-    const tooltipElement = document.createElement("div");
-    tooltipElement.className = "ol-tooltip ol-tooltip-measure";
-    const tooltip = new Overlay({
-      element: tooltipElement,
-      offset: [0, -15],
-      positioning: "bottom-center",
-    });
-    olMap.current.addOverlay(tooltip);
-    measureTooltipRef.current = { overlay: tooltip, element: tooltipElement };
-
     return () => {
       if (olMap.current) {
         olMap.current.setTarget(undefined);
@@ -181,70 +167,10 @@ const MapComponent = ({
     };
   }, [setMapInstance]);
 
-  // --- Hover Effect ---
+  // --- Layer Management Effect ---
   useEffect(() => {
     if (!olMap.current) return;
-    const map = olMap.current;
 
-    const hoverStyle = new Style({
-      fill: new Fill({
-        color: "rgba(0, 170, 255, 0.4)",
-      }),
-      stroke: new Stroke({
-        color: "#00aaff",
-        width: 4,
-      }),
-      image: new CircleStyle({
-        radius: 9,
-        fill: new Fill({ color: "#00aaff" }),
-        stroke: new Stroke({ color: "#ffffff", width: 2 }),
-      }),
-    });
-
-    const selectHover = new Select({
-      condition: pointerMove,
-      style: hoverStyle,
-      layers: (layer) => {
-        return (
-          layer.get("isImportedLayer") || layer.get("name") === "editorLayer"
-        );
-      },
-    });
-
-    map.addInteraction(selectHover);
-
-    const pointerMoveHandler = (e) => {
-      if (e.dragging || activeTool === "identify") return;
-      const pixel = map.getEventPixel(e.originalEvent);
-      const hit = map.hasFeatureAtPixel(pixel, {
-        layerFilter: (layer) =>
-          layer.get("isImportedLayer") || layer.get("name") === "editorLayer",
-      });
-      map.getTargetElement().style.cursor = hit ? "pointer" : "";
-    };
-
-    map.on("pointermove", pointerMoveHandler);
-
-    return () => {
-      map.removeInteraction(selectHover);
-      map.un("pointermove", pointerMoveHandler);
-      if (map.getTargetElement()) {
-        map.getTargetElement().style.cursor = "";
-      }
-    };
-  }, [activeTool]);
-
-  // --- Other Effects (Layer Management, Coordinates, Graticule) ---
-  useEffect(() => {
-    if (!olMap.current) return;
-    olMap.current.getLayers().forEach((layer) => {
-      const layerName = layer.get("name");
-      const state = baseLayerStates[layerName];
-      if (state) {
-        layer.setVisible(state.visible);
-        layer.setOpacity(state.opacity);
-      }
-    });
     olMap.current
       .getLayers()
       .getArray()
@@ -278,6 +204,7 @@ const MapComponent = ({
         olMap.current.addLayer(vectorLayer);
       });
     }
+
     olMap.current
       .getLayers()
       .getArray()
@@ -302,6 +229,7 @@ const MapComponent = ({
     }
   }, [baseLayerStates, importedLayers, imageLayers]);
 
+  // --- Other Effects (Coordinates, Graticule) ---
   useEffect(() => {
     if (!olMap.current) return;
     const map = olMap.current;
@@ -490,31 +418,23 @@ const MapComponent = ({
       map.removeInteraction(modifyInteractionRef.current);
     if (selectClickInteractionRef.current)
       map.removeInteraction(selectClickInteractionRef.current);
-    map
-      .getListeners("singleclick")
-      ?.forEach((listener) => map.un("singleclick", listener[0]));
+    if (snapInteractionRef.current)
+      map.removeInteraction(snapInteractionRef.current);
+    if (hoverInteractionRef.current)
+      map.removeInteraction(hoverInteractionRef.current);
+
+    if (identifyListenerKey.current) {
+      unByKey(identifyListenerKey.current);
+      identifyListenerKey.current = null;
+    }
 
     const mapElement = map.getTargetElement();
     if (mapElement) {
       mapElement.style.cursor = "";
     }
 
-    measureLayerRef.current.getSource().clear();
-    const measureOverlays = map.getOverlays().getArray().slice(1);
-    measureOverlays.forEach((overlay) => {
-      if (overlay.getElement().className.includes("ol-tooltip-static")) {
-        map.removeOverlay(overlay);
-      }
-    });
-
     if (selectionMeasureLayerRef.current) {
       selectionMeasureLayerRef.current.getSource().clear();
-    }
-
-    const mainTooltip = measureTooltipRef.current;
-    if (mainTooltip) {
-      mainTooltip.element.className = "ol-tooltip ol-tooltip-measure";
-      mainTooltip.overlay.setPosition(undefined);
     }
 
     const formatLength = (line) => {
@@ -533,16 +453,12 @@ const MapComponent = ({
         : `${area.toFixed(2)} m²`;
     };
 
-    const addMeasureInteraction = (type) => {
-      /* ... */
-    };
-
     const identifyClickListener = (evt) => {
       const features = [];
       map.forEachFeatureAtPixel(evt.pixel, (feature, layer) => {
         if (
           layer &&
-          layer !== measureLayerRef.current &&
+          layer.get("name") !== "selectionMeasureLayer" &&
           !layer.get("isImageLayer")
         ) {
           features.push(feature);
@@ -558,9 +474,6 @@ const MapComponent = ({
       );
     };
 
-    // =================================================================
-    // === ແກ້ໄຂ: ນຳ Style ຂອງການເລືອກ (ລວມທັງຈຸດ Vertices) ກັບຄືນມາ ===
-    // =================================================================
     const selectionStyle = [
       new Style({
         stroke: new Stroke({ color: "#0d6efd", width: 3 }),
@@ -573,26 +486,85 @@ const MapComponent = ({
           stroke: new Stroke({ color: "#0d6efd", width: 2 }),
         }),
         geometry: (feature) => {
-          const type = feature.getGeometry().getType();
-          let coordinates;
-          if (type === "Polygon") {
-            coordinates = feature.getGeometry().getCoordinates()[0];
-          } else if (type === "LineString") {
-            coordinates = feature.getGeometry().getCoordinates();
-          } else {
-            return null;
+          const geom = feature.getGeometry();
+          if (geom instanceof Polygon) {
+            return new MultiPoint(geom.getCoordinates()[0]);
+          } else if (geom instanceof LineString) {
+            return new MultiPoint(geom.getCoordinates());
           }
-          return new MultiPoint(coordinates);
+          return null;
         },
       }),
     ];
-    // =================================================================
 
+    const setupSnap = () => {
+      if (snapInteractionRef.current) {
+        map.removeInteraction(snapInteractionRef.current);
+      }
+      const allFeatures = [];
+      map
+        .getLayers()
+        .getArray()
+        .forEach((layer) => {
+          if (layer instanceof VectorLayer && layer.getSource()) {
+            const layerName = layer.get("name");
+            const isImported = layer.get("isImportedLayer");
+            if (layerName === "editorLayer" || isImported) {
+              allFeatures.push(...layer.getSource().getFeatures());
+            }
+          }
+        });
+
+      if (allFeatures.length > 0) {
+        const snapSource = new VectorSource({ features: allFeatures });
+        snapInteractionRef.current = new Snap({
+          source: snapSource,
+          pixelTolerance: 15,
+          vertex: true,
+          edge: true,
+        });
+        map.addInteraction(snapInteractionRef.current);
+      }
+    };
+
+    // --- Hover Interaction Setup ---
+    if (activeTool === "pan" || activeTool === "identify") {
+      const hoverStyle = new Style({
+        fill: new Fill({ color: "rgba(0, 170, 255, 0.4)" }),
+        stroke: new Stroke({ color: "#00aaff", width: 4 }),
+        image: new CircleStyle({
+          radius: 9,
+          fill: new Fill({ color: "#00aaff" }),
+          stroke: new Stroke({ color: "#ffffff", width: 2 }),
+        }),
+      });
+      hoverInteractionRef.current = new Select({
+        condition: pointerMove,
+        style: hoverStyle,
+        layers: (layer) =>
+          layer.get("isImportedLayer") || layer.get("name") === "editorLayer",
+      });
+      map.addInteraction(hoverInteractionRef.current);
+
+      const pointerMoveHandler = (e) => {
+        if (e.dragging) return;
+        const pixel = map.getEventPixel(e.originalEvent);
+        const hit = map.hasFeatureAtPixel(pixel, {
+          layerFilter: (layer) =>
+            layer.get("isImportedLayer") || layer.get("name") === "editorLayer",
+        });
+        map.getTargetElement().style.cursor = hit ? "pointer" : "";
+      };
+      map.on("pointermove", pointerMoveHandler);
+    }
+
+    // --- Main Tool Switch ---
     switch (activeTool) {
       case "draw-point":
       case "draw-line":
       case "draw-polygon":
       case "draw-circle": {
+        setupSnap();
         const drawType = {
           "draw-point": "Point",
           "draw-line": "LineString",
@@ -603,10 +575,16 @@ const MapComponent = ({
           source: vectorLayerRef.current.getSource(),
           type: drawType,
         });
+
+        drawInteractionRef.current.on("drawend", () => {
+          setupSnap();
+        });
+
         map.addInteraction(drawInteractionRef.current);
         break;
       }
       case "edit": {
+        setupSnap();
         const select = new Select({
           condition: click,
           style: selectionStyle,
@@ -619,6 +597,11 @@ const MapComponent = ({
         modifyInteractionRef.current = new Modify({
           features: select.getFeatures(),
         });
+
+        modifyInteractionRef.current.on("modifyend", () => {
+          setupSnap();
+        });
+
         map.addInteraction(modifyInteractionRef.current);
 
         const measureSource = selectionMeasureLayerRef.current.getSource();
@@ -645,9 +628,14 @@ const MapComponent = ({
           });
         };
 
-        select.getFeatures().on("add", (event) => {
-          measureSource.clear();
-          const feature = event.element;
+        const updateMeasureLabels = (feature) => {
+          if (!feature) return;
+
+          const oldLabels = measureSource
+            .getFeatures()
+            .filter((f) => f.get("parent_id") === feature.ol_uid);
+          oldLabels.forEach((label) => measureSource.removeFeature(label));
+
           const geom = feature.getGeometry();
           const newLabelFeatures = [];
 
@@ -655,6 +643,7 @@ const MapComponent = ({
             const areaText = formatArea(geom);
             const areaPoint = new Feature(geom.getInteriorPoint());
             areaPoint.setStyle(createTextStyle(areaText, "point"));
+            areaPoint.set("parent_id", feature.ol_uid);
             newLabelFeatures.push(areaPoint);
 
             const coords = geom.getCoordinates()[0];
@@ -663,39 +652,58 @@ const MapComponent = ({
               const lengthText = formatLength(segment);
               const segmentFeature = new Feature(segment);
               segmentFeature.setStyle(createTextStyle(lengthText, "line"));
+              segmentFeature.set("parent_id", feature.ol_uid);
               newLabelFeatures.push(segmentFeature);
             }
           } else if (geom instanceof LineString) {
             const lengthText = formatLength(geom);
             const lineFeature = new Feature(geom);
             lineFeature.setStyle(createTextStyle(lengthText, "line"));
+            lineFeature.set("parent_id", feature.ol_uid);
             newLabelFeatures.push(lineFeature);
           }
           measureSource.addFeatures(newLabelFeatures);
+        };
+
+        select.getFeatures().on("add", (event) => {
+          const feature = event.element;
+          updateMeasureLabels(feature);
+
+          const listenerKey = feature.getGeometry().on("change", () => {
+            updateMeasureLabels(feature);
+          });
+          geometryListenerKeys.current[feature.ol_uid] = listenerKey;
         });
 
-        select.getFeatures().on("remove", () => {
-          measureSource.clear();
+        select.getFeatures().on("remove", (event) => {
+          const feature = event.element;
+
+          const labelsToRemove = measureSource
+            .getFeatures()
+            .filter((f) => f.get("parent_id") === feature.ol_uid);
+          labelsToRemove.forEach((label) => measureSource.removeFeature(label));
+
+          const listenerKey = geometryListenerKeys.current[feature.ol_uid];
+          if (listenerKey) {
+            unByKey(listenerKey);
+            delete geometryListenerKeys.current[feature.ol_uid];
+          }
         });
         break;
       }
-      case "measure-distance":
-        addMeasureInteraction("LineString");
-        break;
-      case "measure-area":
-        addMeasureInteraction("Polygon");
-        break;
       case "identify":
         if (mapElement) {
           mapElement.style.cursor = "help";
         }
-        map.on("singleclick", identifyClickListener);
+        identifyListenerKey.current = map.on(
+          "singleclick",
+          identifyClickListener
+        );
         break;
       default:
-        // For 'pan' or any other tool, the cursor is reset at the top.
         break;
     }
-  }, [activeTool, onFeatureSelect]);
+  }, [activeTool, onFeatureSelect, importedLayers]);
 
   return (
     <div className="map-container">
