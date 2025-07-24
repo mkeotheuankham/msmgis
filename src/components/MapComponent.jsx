@@ -3,7 +3,6 @@ import "ol/ol.css";
 import Map from "ol/Map";
 import View from "ol/View";
 import TileLayer from "ol/layer/Tile";
-import XYZ from "ol/source/XYZ";
 import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import ImageLayer from "ol/layer/Image";
@@ -31,6 +30,7 @@ import { getArea, getLength } from "ol/sphere";
 import { unByKey } from "ol/Observable";
 
 import "./ui/MeasureTooltip.css";
+import BaseMapManager from "./map/BaseMapManager"; // **ເພີ່ມ:** Import component ໃໝ່
 
 // Register UTM projections for Laos
 proj4.defs("EPSG:32647", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs");
@@ -66,58 +66,6 @@ const MapComponent = ({
 
   // --- Initial Map Setup ---
   useEffect(() => {
-    const baseLayers = [
-      new TileLayer({
-        source: new XYZ({
-          url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        }),
-        name: "osm",
-        visible: true,
-      }),
-      new TileLayer({
-        source: new XYZ({
-          url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        }),
-        name: "satellite",
-        visible: false,
-      }),
-      new TileLayer({
-        source: new XYZ({
-          url: "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}.jpg",
-          maxZoom: 20,
-          attributions: [
-            "© CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data)",
-            '© <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a>',
-            '© <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a>',
-            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-          ].join(" | "),
-        }),
-        name: "topo",
-        visible: false,
-      }),
-      new TileLayer({
-        source: new XYZ({
-          url: "https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}",
-        }),
-        name: "googleSatellite",
-        visible: false,
-      }),
-      new TileLayer({
-        source: new XYZ({
-          url: "https://mt0.google.com/vt/lyrs=y&hl=en&x={x}&y={y}&z={z}",
-        }),
-        name: "googleHybrid",
-        visible: false,
-      }),
-      new TileLayer({
-        source: new XYZ({
-          url: "https://{a-d}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png",
-        }),
-        name: "carto",
-        visible: false,
-      }),
-    ];
-
     vectorLayerRef.current = new VectorLayer({
       source: new VectorSource(),
       name: "editorLayer",
@@ -155,7 +103,6 @@ const MapComponent = ({
     olMap.current = new Map({
       target: mapRef.current,
       layers: [
-        ...baseLayers,
         vectorLayerRef.current,
         selectionMeasureLayerRef.current,
         utmGridLineLayer,
@@ -179,17 +126,6 @@ const MapComponent = ({
   // --- Layer Management Effect ---
   useEffect(() => {
     if (!olMap.current) return;
-
-    // **ແກ້ໄຂ:** ນຳ logic ການຈັດການ basemap ແບບເດີມກັບຄືນມາ
-    olMap.current.getLayers().forEach((layer) => {
-      const layerName = layer.get("name");
-      const state = baseLayerStates[layerName];
-      // Check if it's a base layer (TileLayer with a name and state)
-      if (layer instanceof TileLayer && layerName && state) {
-        layer.setVisible(state.visible);
-        layer.setOpacity(state.opacity);
-      }
-    });
 
     // Imported Vector Layers
     olMap.current
@@ -249,7 +185,7 @@ const MapComponent = ({
         olMap.current.addLayer(imageLayer);
       });
     }
-  }, [baseLayerStates, importedLayers, imageLayers]);
+  }, [importedLayers, imageLayers]);
 
   // --- Other Effects (Coordinates, Graticule) ---
   useEffect(() => {
@@ -774,6 +710,7 @@ const MapComponent = ({
             }
           } else if (geom instanceof LineString) {
             const lengthText = formatLength(geom);
+            // **ແກ້ໄຂ:** ໃຊ້ຕົວແປ 'geom' ທີ່ຖືກຕ້ອງ
             const lineFeature = new Feature(geom);
             lineFeature.setStyle(createTextStyle(lengthText, "line"));
             lineFeature.set("parent_id", feature.ol_uid);
@@ -820,10 +757,11 @@ const MapComponent = ({
       default:
         break;
     }
-  }, [activeTool, onFeatureSelect, importedLayers, baseLayerStates]); // **ເພີ່ມ:** baseLayerStates ເຂົ້າໄປໃນ dependency array
+  }, [activeTool, onFeatureSelect, importedLayers]);
 
   return (
     <div className="map-container">
+      <BaseMapManager map={olMap.current} baseLayerStates={baseLayerStates} />
       <div
         ref={mapRef}
         id="map"
