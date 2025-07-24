@@ -62,6 +62,8 @@ const MapComponent = ({
   const identifyListenerKey = useRef(null);
   const geometryListenerKeys = useRef({});
 
+  const snapSourceRef = useRef(new VectorSource());
+
   // --- Initial Map Setup ---
   useEffect(() => {
     const baseLayers = [
@@ -81,7 +83,14 @@ const MapComponent = ({
       }),
       new TileLayer({
         source: new XYZ({
-          url: "https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png",
+          url: "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}.jpg",
+          maxZoom: 20,
+          attributions: [
+            "© CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data)",
+            '© <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a>',
+            '© <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a>',
+            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          ].join(" | "),
         }),
         name: "topo",
         visible: false,
@@ -171,6 +180,18 @@ const MapComponent = ({
   useEffect(() => {
     if (!olMap.current) return;
 
+    // **ແກ້ໄຂ:** ນຳ logic ການຈັດການ basemap ແບບເດີມກັບຄືນມາ
+    olMap.current.getLayers().forEach((layer) => {
+      const layerName = layer.get("name");
+      const state = baseLayerStates[layerName];
+      // Check if it's a base layer (TileLayer with a name and state)
+      if (layer instanceof TileLayer && layerName && state) {
+        layer.setVisible(state.visible);
+        layer.setOpacity(state.opacity);
+      }
+    });
+
+    // Imported Vector Layers
     olMap.current
       .getLayers()
       .getArray()
@@ -205,6 +226,7 @@ const MapComponent = ({
       });
     }
 
+    // Image Layers
     olMap.current
       .getLayers()
       .getArray()
@@ -418,25 +440,26 @@ const MapComponent = ({
       map.removeInteraction(modifyInteractionRef.current);
     if (selectClickInteractionRef.current)
       map.removeInteraction(selectClickInteractionRef.current);
-    if (snapInteractionRef.current)
-      map.removeInteraction(snapInteractionRef.current);
     if (hoverInteractionRef.current)
       map.removeInteraction(hoverInteractionRef.current);
-
+    if (snapInteractionRef.current) {
+      map.removeInteraction(snapInteractionRef.current);
+      snapInteractionRef.current = null;
+    }
     if (identifyListenerKey.current) {
       unByKey(identifyListenerKey.current);
       identifyListenerKey.current = null;
     }
-
     const mapElement = map.getTargetElement();
     if (mapElement) {
       mapElement.style.cursor = "";
     }
-
     if (selectionMeasureLayerRef.current) {
       selectionMeasureLayerRef.current.getSource().clear();
     }
+    snapSourceRef.current.clear();
 
+    // --- Helper Functions ---
     const formatLength = (line) => {
       const length = getLength(line, { projection: "EPSG:3857" });
       return length > 1000
@@ -451,6 +474,24 @@ const MapComponent = ({
       return area >= 10000
         ? `${Math.floor(areaInHa)} ha ${remainingM2.toFixed(0)} m²`
         : `${area.toFixed(2)} m²`;
+    };
+
+    const createTextStyle = (text, placement = "point") => {
+      const styleOptions = {
+        text: text,
+        font: 'bold 12px "Open Sans", sans-serif',
+        fill: new Fill({ color: "#333" }),
+        stroke: new Stroke({ color: "rgba(255, 255, 255, 0.9)", width: 4 }),
+        overflow: true,
+      };
+      if (placement === "line") {
+        styleOptions.placement = "line";
+        styleOptions.textBaseline = "bottom";
+        styleOptions.offsetY = -1;
+      } else {
+        styleOptions.placement = "point";
+      }
+      return new Style({ text: new Text(styleOptions) });
     };
 
     const identifyClickListener = (evt) => {
@@ -498,33 +539,67 @@ const MapComponent = ({
     ];
 
     const setupSnap = () => {
-      if (snapInteractionRef.current) {
-        map.removeInteraction(snapInteractionRef.current);
-      }
-      const allFeatures = [];
+      snapSourceRef.current.clear();
+      const featuresToSnap = [];
       map
         .getLayers()
         .getArray()
         .forEach((layer) => {
           if (layer instanceof VectorLayer && layer.getSource()) {
-            const layerName = layer.get("name");
-            const isImported = layer.get("isImportedLayer");
-            if (layerName === "editorLayer" || isImported) {
-              allFeatures.push(...layer.getSource().getFeatures());
+            const isEditorLayer = layer.get("name") === "editorLayer";
+            const isImportedLayer = layer.get("isImportedLayer");
+            if ((isEditorLayer || isImportedLayer) && layer.getVisible()) {
+              featuresToSnap.push(...layer.getSource().getFeatures());
             }
           }
         });
+      snapSourceRef.current.addFeatures(featuresToSnap);
 
-      if (allFeatures.length > 0) {
-        const snapSource = new VectorSource({ features: allFeatures });
+      if (!snapInteractionRef.current) {
         snapInteractionRef.current = new Snap({
-          source: snapSource,
+          source: snapSourceRef.current,
           pixelTolerance: 15,
           vertex: true,
           edge: true,
         });
         map.addInteraction(snapInteractionRef.current);
       }
+    };
+
+    const updateDrawingMeasureLabels = (geometry) => {
+      const measureSource = selectionMeasureLayerRef.current.getSource();
+      const oldLabels = measureSource
+        .getFeatures()
+        .filter((f) => f.get("label_type") === "drawing");
+      oldLabels.forEach((label) => measureSource.removeFeature(label));
+
+      if (!geometry) return;
+
+      const newLabelFeatures = [];
+      if (geometry instanceof Polygon) {
+        const areaText = formatArea(geometry);
+        const areaPoint = new Feature(geometry.getInteriorPoint());
+        areaPoint.setStyle(createTextStyle(areaText, "point"));
+        areaPoint.set("label_type", "drawing");
+        newLabelFeatures.push(areaPoint);
+
+        const coords = geometry.getCoordinates()[0];
+        for (let i = 0; i < coords.length - 1; i++) {
+          const segment = new LineString([coords[i], coords[i + 1]]);
+          const lengthText = formatLength(segment);
+          const segmentFeature = new Feature(segment);
+          segmentFeature.setStyle(createTextStyle(lengthText, "line"));
+          segmentFeature.set("label_type", "drawing");
+          newLabelFeatures.push(segmentFeature);
+        }
+      } else if (geometry instanceof LineString) {
+        const lengthText = formatLength(geometry);
+        const lineFeature = new Feature(geometry);
+        lineFeature.setStyle(createTextStyle(lengthText, "line"));
+        lineFeature.set("label_type", "drawing");
+        newLabelFeatures.push(lineFeature);
+      }
+      measureSource.addFeatures(newLabelFeatures);
     };
 
     // --- Hover Interaction Setup ---
@@ -545,7 +620,6 @@ const MapComponent = ({
           layer.get("isImportedLayer") || layer.get("name") === "editorLayer",
       });
       map.addInteraction(hoverInteractionRef.current);
-
       const pointerMoveHandler = (e) => {
         if (e.dragging) return;
         const pixel = map.getEventPixel(e.originalEvent);
@@ -571,13 +645,80 @@ const MapComponent = ({
           "draw-polygon": "Polygon",
           "draw-circle": "Circle",
         }[activeTool];
+
+        const sketchStyle = new Style({
+          fill: new Fill({
+            color: "rgba(0, 118, 255, 0.1)",
+          }),
+          stroke: new Stroke({
+            color: "#007bff",
+            width: 3,
+          }),
+        });
+
+        const vertexStyle = new Style({
+          image: new CircleStyle({
+            radius: 6,
+            fill: new Fill({
+              color: "white",
+            }),
+            stroke: new Stroke({
+              color: "#007bff",
+              width: 2,
+            }),
+          }),
+          geometry: (feature) => {
+            const geom = feature.getGeometry();
+            let coordinates;
+            if (geom instanceof Polygon) {
+              coordinates = geom.getCoordinates()[0];
+            } else if (geom instanceof LineString) {
+              coordinates = geom.getCoordinates();
+            } else {
+              return null;
+            }
+            return new MultiPoint(coordinates);
+          },
+        });
+
+        const drawStyleFunction = (feature) => {
+          const geomType = feature.getGeometry().getType();
+          if (geomType === "Point" || geomType === "Circle") {
+            return sketchStyle;
+          }
+          return [sketchStyle, vertexStyle];
+        };
+
         drawInteractionRef.current = new Draw({
           source: vectorLayerRef.current.getSource(),
           type: drawType,
+          style: drawStyleFunction,
         });
 
-        drawInteractionRef.current.on("drawend", () => {
-          setupSnap();
+        let drawingListenerKey = null;
+        drawInteractionRef.current.on("drawstart", (evt) => {
+          const sketchFeature = evt.feature;
+          drawingListenerKey = sketchFeature
+            .getGeometry()
+            .on("change", (geomEvt) => {
+              updateDrawingMeasureLabels(geomEvt.target);
+            });
+        });
+
+        drawInteractionRef.current.on("drawend", (evt) => {
+          evt.feature.setStyle(null);
+          updateDrawingMeasureLabels(null);
+          unByKey(drawingListenerKey);
+          drawingListenerKey = null;
+          snapSourceRef.current.addFeature(evt.feature);
+        });
+
+        drawInteractionRef.current.on("drawabort", () => {
+          updateDrawingMeasureLabels(null);
+          if (drawingListenerKey) {
+            unByKey(drawingListenerKey);
+          }
+          drawingListenerKey = null;
         });
 
         map.addInteraction(drawInteractionRef.current);
@@ -598,35 +739,11 @@ const MapComponent = ({
           features: select.getFeatures(),
         });
 
-        modifyInteractionRef.current.on("modifyend", () => {
-          setupSnap();
-        });
+        modifyInteractionRef.current.on("modifyend", setupSnap);
 
         map.addInteraction(modifyInteractionRef.current);
 
         const measureSource = selectionMeasureLayerRef.current.getSource();
-
-        const createTextStyle = (text, placement = "point") => {
-          const styleOptions = {
-            text: text,
-            font: 'bold 12px "Open Sans", sans-serif',
-            fill: new Fill({ color: "#333" }),
-            stroke: new Stroke({ color: "rgba(255, 255, 255, 0.9)", width: 4 }),
-            overflow: true,
-          };
-
-          if (placement === "line") {
-            styleOptions.placement = "line";
-            styleOptions.textBaseline = "bottom";
-            styleOptions.offsetY = -1;
-          } else {
-            styleOptions.placement = "point";
-          }
-
-          return new Style({
-            text: new Text(styleOptions),
-          });
-        };
 
         const updateMeasureLabels = (feature) => {
           if (!feature) return;
@@ -703,7 +820,7 @@ const MapComponent = ({
       default:
         break;
     }
-  }, [activeTool, onFeatureSelect, importedLayers]);
+  }, [activeTool, onFeatureSelect, importedLayers, baseLayerStates]); // **ເພີ່ມ:** baseLayerStates ເຂົ້າໄປໃນ dependency array
 
   return (
     <div className="map-container">
