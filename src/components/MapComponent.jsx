@@ -80,14 +80,7 @@ const MapComponent = ({
       }),
       new TileLayer({
         source: new XYZ({
-          url: "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}.jpg",
-          maxZoom: 20,
-          attributions: [
-            "© CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data)",
-            '© <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a>',
-            '© <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a>',
-            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-          ].join(" | "),
+          url: "https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png",
         }),
         name: "topo",
         visible: false,
@@ -221,7 +214,7 @@ const MapComponent = ({
     map.addInteraction(selectHover);
 
     const pointerMoveHandler = (e) => {
-      if (e.dragging) return;
+      if (e.dragging || activeTool === "identify") return;
       const pixel = map.getEventPixel(e.originalEvent);
       const hit = map.hasFeatureAtPixel(pixel, {
         layerFilter: (layer) =>
@@ -239,7 +232,7 @@ const MapComponent = ({
         map.getTargetElement().style.cursor = "";
       }
     };
-  }, []);
+  }, [activeTool]);
 
   // --- Other Effects (Layer Management, Coordinates, Graticule) ---
   useEffect(() => {
@@ -490,7 +483,7 @@ const MapComponent = ({
     if (!olMap.current) return;
     const map = olMap.current;
 
-    // --- Cleanup previous interactions and overlays ---
+    // --- Cleanup previous interactions, overlays, and cursor ---
     if (drawInteractionRef.current)
       map.removeInteraction(drawInteractionRef.current);
     if (modifyInteractionRef.current)
@@ -500,6 +493,11 @@ const MapComponent = ({
     map
       .getListeners("singleclick")
       ?.forEach((listener) => map.un("singleclick", listener[0]));
+
+    const mapElement = map.getTargetElement();
+    if (mapElement) {
+      mapElement.style.cursor = "";
+    }
 
     measureLayerRef.current.getSource().clear();
     const measureOverlays = map.getOverlays().getArray().slice(1);
@@ -538,10 +536,31 @@ const MapComponent = ({
     const addMeasureInteraction = (type) => {
       /* ... */
     };
+
     const identifyClickListener = (evt) => {
-      /* ... */
+      const features = [];
+      map.forEachFeatureAtPixel(evt.pixel, (feature, layer) => {
+        if (
+          layer &&
+          layer !== measureLayerRef.current &&
+          !layer.get("isImageLayer")
+        ) {
+          features.push(feature);
+        }
+      });
+      onFeatureSelect(
+        features.length > 0
+          ? {
+              attributes: features[0].getProperties(),
+              coordinate: evt.coordinate,
+            }
+          : null
+      );
     };
 
+    // =================================================================
+    // === ແກ້ໄຂ: ນຳ Style ຂອງການເລືອກ (ລວມທັງຈຸດ Vertices) ກັບຄືນມາ ===
+    // =================================================================
     const selectionStyle = [
       new Style({
         stroke: new Stroke({ color: "#0d6efd", width: 3 }),
@@ -567,6 +586,7 @@ const MapComponent = ({
         },
       }),
     ];
+    // =================================================================
 
     switch (activeTool) {
       case "draw-point":
@@ -603,9 +623,6 @@ const MapComponent = ({
 
         const measureSource = selectionMeasureLayerRef.current.getSource();
 
-        // =================================================================
-        // === ອັບເດດ: ປັບປຸງ Style ເພື່ອຍູ້ປ້າຍອອກນອກເສັ້ນ ===
-        // =================================================================
         const createTextStyle = (text, placement = "point") => {
           const styleOptions = {
             text: text,
@@ -617,9 +634,7 @@ const MapComponent = ({
 
           if (placement === "line") {
             styleOptions.placement = "line";
-            // ກຳນົດໃຫ້ປ້າຍຢູ່ດ້ານລຸ່ມຂອງເສັ້ນ (ສຳລັບການຍູ້ຂຶ້ນ)
             styleOptions.textBaseline = "bottom";
-            // ຍູ້ປ້າຍອອກຈາກເສັ້ນ 15px
             styleOptions.offsetY = -1;
           } else {
             styleOptions.placement = "point";
@@ -629,7 +644,6 @@ const MapComponent = ({
             text: new Text(styleOptions),
           });
         };
-        // =================================================================
 
         select.getFeatures().on("add", (event) => {
           measureSource.clear();
@@ -672,9 +686,13 @@ const MapComponent = ({
         addMeasureInteraction("Polygon");
         break;
       case "identify":
+        if (mapElement) {
+          mapElement.style.cursor = "help";
+        }
         map.on("singleclick", identifyClickListener);
         break;
       default:
+        // For 'pan' or any other tool, the cursor is reset at the top.
         break;
     }
   }, [activeTool, onFeatureSelect]);
