@@ -54,6 +54,8 @@ const MapComponent = ({
   baseLayerStates,
   onFeatureSelect,
   imageLayers,
+  historyManager,
+  onHistoryChange,
 }) => {
   const mapRef = useRef();
   const olMap = useRef(null);
@@ -123,13 +125,18 @@ const MapComponent = ({
 
     setMapInstance(olMap.current);
 
+    if (historyManager) {
+      historyManager.addState([]);
+      onHistoryChange();
+    }
+
     return () => {
       if (olMap.current) {
         olMap.current.setTarget(undefined);
         olMap.current.dispose();
       }
     };
-  }, [setMapInstance]);
+  }, [setMapInstance, historyManager, onHistoryChange]);
 
   // --- Layer Management Effect ---
   useEffect(() => {
@@ -260,7 +267,6 @@ const MapComponent = ({
       const utmProjection = `EPSG:326${zone}`;
       const utmExtent = transformExtent(extent, projection, utmProjection);
 
-      // **ແກ້ໄຂ:** ບັງຄັບໃຫ້ interval ຂອງຕາຂ່າຍຫຼັກບໍ່ນ້ອຍກວ່າ 2000
       const dynamicInterval = Math.pow(
         10,
         Math.floor(Math.log10(view.getResolution() * 500))
@@ -411,6 +417,14 @@ const MapComponent = ({
     }
 
     // --- Helper Functions ---
+    const saveHistoryState = () => {
+      if (historyManager && vectorLayerRef.current) {
+        const features = vectorLayerRef.current.getSource().getFeatures();
+        historyManager.addState(features);
+        onHistoryChange();
+      }
+    };
+
     const formatLength = (line) => {
       const length = getLength(line, { projection: "EPSG:3857" });
       return length > 1000
@@ -590,6 +604,25 @@ const MapComponent = ({
     }
 
     // --- Main Tool Switch ---
+    // **ເພີ່ມ:** Keyboard event listener for delete
+    const handleKeyDown = (event) => {
+      if (event.key === "Delete" || event.key === "Backspace") {
+        const selectInteraction = selectClickInteractionRef.current;
+        if (selectInteraction) {
+          const selectedFeatures = selectInteraction.getFeatures();
+          if (selectedFeatures.getLength() > 0) {
+            const source = vectorLayerRef.current.getSource();
+            selectedFeatures.forEach((feature) =>
+              source.removeFeature(feature)
+            );
+            selectedFeatures.clear();
+            saveHistoryState();
+            setupSnap();
+          }
+        }
+      }
+    };
+
     switch (activeTool) {
       case "draw-point":
       case "draw-line":
@@ -668,6 +701,7 @@ const MapComponent = ({
           unByKey(drawingListenerKey);
           drawingListenerKey = null;
           setupSnap();
+          saveHistoryState();
         });
 
         drawInteractionRef.current.on("drawabort", () => {
@@ -697,9 +731,15 @@ const MapComponent = ({
           features: select.getFeatures(),
         });
 
-        modifyInteractionRef.current.on("modifyend", setupSnap);
+        modifyInteractionRef.current.on("modifyend", () => {
+          setupSnap();
+          saveHistoryState();
+        });
 
         map.addInteraction(modifyInteractionRef.current);
+
+        // **ເພີ່ມ:** Add keydown listener for delete
+        document.addEventListener("keydown", handleKeyDown);
 
         const measureSource = selectionMeasureLayerRef.current.getSource();
 
@@ -776,7 +816,18 @@ const MapComponent = ({
       default:
         break;
     }
-  }, [activeTool, onFeatureSelect, importedLayers]);
+
+    // **ເພີ່ມ:** Cleanup function for keydown listener
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    activeTool,
+    onFeatureSelect,
+    importedLayers,
+    historyManager,
+    onHistoryChange,
+  ]);
 
   return (
     <div className="map-container">

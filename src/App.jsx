@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import RibbonToolbar from "./components/RibbonToolbar";
 import MapComponent from "./components/MapComponent";
 import StatusBar from "./components/StatusBar";
@@ -11,6 +11,7 @@ import StyleEditorModal from "./components/ui/StyleEditorModal";
 import ExportDataModal from "./components/ui/ExportDataModal";
 import ImageLayerModal from "./components/ui/ImageLayerModal";
 import ImageEditorModal from "./components/ui/ImageEditorModal";
+import HistoryManager from "./utils/HistoryManager";
 import "./App.css";
 import shp from "shpjs";
 import { KML, GeoJSON } from "ol/format";
@@ -97,6 +98,46 @@ function App() {
     googleHybrid: { name: "Google Hybrid", visible: false, opacity: 1 },
     carto: { name: "Carto Voyager", visible: false, opacity: 1 },
   });
+
+  // **ເພີ່ມ:** State ແລະ Ref ສຳລັບ Undo/Redo
+  const historyManagerRef = useRef(new HistoryManager());
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  const updateHistoryButtons = useCallback(() => {
+    setCanUndo(historyManagerRef.current.canUndo());
+    setCanRedo(historyManagerRef.current.canRedo());
+  }, []);
+
+  const handleUndo = () => {
+    if (mapInstance && historyManagerRef.current.canUndo()) {
+      const previousFeatures = historyManagerRef.current.undo();
+      const editorLayer = mapInstance
+        .getLayers()
+        .getArray()
+        .find((l) => l.get("name") === "editorLayer");
+      if (editorLayer && previousFeatures) {
+        editorLayer.getSource().clear();
+        editorLayer.getSource().addFeatures(previousFeatures);
+      }
+      updateHistoryButtons();
+    }
+  };
+
+  const handleRedo = () => {
+    if (mapInstance && historyManagerRef.current.canRedo()) {
+      const nextFeatures = historyManagerRef.current.redo();
+      const editorLayer = mapInstance
+        .getLayers()
+        .getArray()
+        .find((l) => l.get("name") === "editorLayer");
+      if (editorLayer && nextFeatures) {
+        editorLayer.getSource().clear();
+        editorLayer.getSource().addFeatures(nextFeatures);
+      }
+      updateHistoryButtons();
+    }
+  };
 
   const getLayerByName = useCallback(
     (name) => {
@@ -490,6 +531,10 @@ function App() {
         handleZoomOut={handleZoomOut}
         handleZoomToLayer={handleZoomToLayer}
         handleFullExtent={handleFullExtent}
+        handleUndo={handleUndo}
+        handleRedo={handleRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
       <div className="main-content">
         <MapComponent
@@ -501,6 +546,8 @@ function App() {
           selectedDate={selectedDate}
           importedLayers={importedLayers}
           imageLayers={imageLayers}
+          historyManager={historyManagerRef.current}
+          onHistoryChange={updateHistoryButtons}
           baseLayerStates={baseLayerStates}
           onFeatureSelect={handleFeatureSelect}
         />

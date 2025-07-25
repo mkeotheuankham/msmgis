@@ -19,7 +19,9 @@ import {
   Edit,
   Upload,
   Download,
-  Image as ImageIcon, // **อัปเดต:** เพิ่ม ImageIcon
+  Image as ImageIcon,
+  Undo,
+  Redo,
 } from "lucide-react";
 import "./RibbonToolbar.css";
 
@@ -32,14 +34,19 @@ const RibbonToolbar = ({
   setActivePanel,
   setIsImportModalVisible,
   setIsExportModalVisible,
-  setIsImageModalVisible, // **อัปเดต:** เพิ่ม prop ใหม่
+  setIsImageModalVisible,
   handleClearMap,
   handleZoomIn,
   handleZoomOut,
   handleZoomToLayer,
   handleFullExtent,
+  handleUndo,
+  handleRedo,
+  canUndo,
+  canRedo,
 }) => {
   const handleTabClick = (tab) => setActiveTab(tab);
+
   const handleToolClick = useCallback(
     (toolName) => {
       setActiveTool((currentTool) =>
@@ -48,17 +55,26 @@ const RibbonToolbar = ({
     },
     [setActiveTool]
   );
+
   const handlePanelToggle = (panelName) => {
     setActivePanel((prev) => (prev === panelName ? null : panelName));
   };
 
-  const RibbonButton = ({ icon, label, toolName, onClick, isActive }) => {
+  const RibbonButton = ({
+    icon,
+    label,
+    toolName,
+    onClick,
+    isActive,
+    isDisabled,
+  }) => {
     const buttonIsActive = isActive || activeTool === toolName;
     return (
       <button
         className={`ribbon-button ${buttonIsActive ? "active" : ""}`}
         onClick={onClick || (() => handleToolClick(toolName))}
         title={label}
+        disabled={isDisabled}
       >
         {icon}
         <span>{label}</span>
@@ -90,7 +106,6 @@ const RibbonToolbar = ({
       </div>
       <div className="ribbon-content">
         <div className={`tab-pane ${activeTab === "home" ? "active" : ""}`}>
-          {/* ... Home tab content remains the same ... */}
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
@@ -110,6 +125,23 @@ const RibbonToolbar = ({
               />
             </div>
             <div className="ribbon-group-title">Map Tools</div>
+          </div>
+          <div className="ribbon-group">
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<Undo size={18} />}
+                label="Undo"
+                onClick={handleUndo}
+                isDisabled={!canUndo}
+              />
+              <RibbonButton
+                icon={<Redo size={18} />}
+                label="Redo"
+                onClick={handleRedo}
+                isDisabled={!canRedo}
+              />
+            </div>
+            <div className="ribbon-group-title">History</div>
           </div>
           <div className="ribbon-group">
             <div className="ribbon-buttons">
@@ -158,7 +190,6 @@ const RibbonToolbar = ({
           </div>
         </div>
         <div className={`tab-pane ${activeTab === "map" ? "active" : ""}`}>
-          {/* ... Navigation, View, Base Maps groups remain the same ... */}
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
@@ -213,7 +244,6 @@ const RibbonToolbar = ({
                 label="Import Vector"
                 onClick={() => setIsImportModalVisible(true)}
               />
-              {/* **อัปเดต:** เพิ่มปุ่ม Import Image */}
               <RibbonButton
                 icon={<ImageIcon size={18} />}
                 label="Import Image"
@@ -229,7 +259,6 @@ const RibbonToolbar = ({
           </div>
         </div>
         <div className={`tab-pane ${activeTab === "analysis" ? "active" : ""}`}>
-          {/* ... Analysis tab content remains the same ... */}
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
