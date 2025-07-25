@@ -23,14 +23,22 @@ import Feature from "ol/Feature";
 import { Draw, Modify, Select, Snap } from "ol/interaction";
 import { click, pointerMove } from "ol/events/condition";
 import Graticule from "ol/layer/Graticule";
-import { Style, Fill, Stroke, Text, Circle as CircleStyle } from "ol/style";
+import {
+  Style,
+  Fill,
+  Stroke,
+  Text,
+  Circle as CircleStyle,
+  RegularShape,
+} from "ol/style";
 import proj4 from "proj4";
 import { register } from "ol/proj/proj4";
 import { getArea, getLength } from "ol/sphere";
 import { unByKey } from "ol/Observable";
 
 import "./ui/MeasureTooltip.css";
-import BaseMapManager from "./map/BaseMapManager"; // **ເພີ່ມ:** Import component ໃໝ່
+import BaseMapManager from "./map/BaseMapManager";
+import CustomUtmGrid from "./map/CustomUtmGrid";
 
 // Register UTM projections for Laos
 proj4.defs("EPSG:32647", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs");
@@ -61,8 +69,8 @@ const MapComponent = ({
   const selectionMeasureLayerRef = useRef(null);
   const identifyListenerKey = useRef(null);
   const geometryListenerKeys = useRef({});
-
   const snapSourceRef = useRef(new VectorSource());
+  const pointerMoveCursorListenerRef = useRef(null);
 
   // --- Initial Map Setup ---
   useEffect(() => {
@@ -251,10 +259,14 @@ const MapComponent = ({
       if (centerLonLat[1] < 0 || (zone !== 47 && zone !== 48)) return;
       const utmProjection = `EPSG:326${zone}`;
       const utmExtent = transformExtent(extent, projection, utmProjection);
-      const interval = Math.pow(
+
+      // **ແກ້ໄຂ:** ບັງຄັບໃຫ້ interval ຂອງຕາຂ່າຍຫຼັກບໍ່ນ້ອຍກວ່າ 2000
+      const dynamicInterval = Math.pow(
         10,
         Math.floor(Math.log10(view.getResolution() * 500))
       );
+      const interval = Math.max(2000, dynamicInterval);
+
       const labelFeatures = [];
       const lineFeatures = [];
       const textStyle = {
@@ -386,6 +398,10 @@ const MapComponent = ({
       unByKey(identifyListenerKey.current);
       identifyListenerKey.current = null;
     }
+    if (pointerMoveCursorListenerRef.current) {
+      unByKey(pointerMoveCursorListenerRef.current);
+      pointerMoveCursorListenerRef.current = null;
+    }
     const mapElement = map.getTargetElement();
     if (mapElement) {
       mapElement.style.cursor = "";
@@ -393,7 +409,6 @@ const MapComponent = ({
     if (selectionMeasureLayerRef.current) {
       selectionMeasureLayerRef.current.getSource().clear();
     }
-    snapSourceRef.current.clear();
 
     // --- Helper Functions ---
     const formatLength = (line) => {
@@ -475,7 +490,10 @@ const MapComponent = ({
     ];
 
     const setupSnap = () => {
-      snapSourceRef.current.clear();
+      if (snapInteractionRef.current) {
+        map.removeInteraction(snapInteractionRef.current);
+      }
+
       const featuresToSnap = [];
       map
         .getLayers()
@@ -489,17 +507,17 @@ const MapComponent = ({
             }
           }
         });
-      snapSourceRef.current.addFeatures(featuresToSnap);
 
-      if (!snapInteractionRef.current) {
-        snapInteractionRef.current = new Snap({
-          source: snapSourceRef.current,
-          pixelTolerance: 15,
-          vertex: true,
-          edge: true,
-        });
-        map.addInteraction(snapInteractionRef.current);
-      }
+      const newSnapSource = new VectorSource({ features: featuresToSnap });
+      snapSourceRef.current = newSnapSource;
+
+      snapInteractionRef.current = new Snap({
+        source: newSnapSource,
+        pixelTolerance: 15,
+        vertex: true,
+        edge: true,
+      });
+      map.addInteraction(snapInteractionRef.current);
     };
 
     const updateDrawingMeasureLabels = (geometry) => {
@@ -565,7 +583,10 @@ const MapComponent = ({
         });
         map.getTargetElement().style.cursor = hit ? "pointer" : "";
       };
-      map.on("pointermove", pointerMoveHandler);
+      pointerMoveCursorListenerRef.current = map.on(
+        "pointermove",
+        pointerMoveHandler
+      );
     }
 
     // --- Main Tool Switch ---
@@ -646,7 +667,7 @@ const MapComponent = ({
           updateDrawingMeasureLabels(null);
           unByKey(drawingListenerKey);
           drawingListenerKey = null;
-          snapSourceRef.current.addFeature(evt.feature);
+          setupSnap();
         });
 
         drawInteractionRef.current.on("drawabort", () => {
@@ -662,6 +683,7 @@ const MapComponent = ({
       }
       case "edit": {
         setupSnap();
+
         const select = new Select({
           condition: click,
           style: selectionStyle,
@@ -710,7 +732,6 @@ const MapComponent = ({
             }
           } else if (geom instanceof LineString) {
             const lengthText = formatLength(geom);
-            // **ແກ້ໄຂ:** ໃຊ້ຕົວແປ 'geom' ທີ່ຖືກຕ້ອງ
             const lineFeature = new Feature(geom);
             lineFeature.setStyle(createTextStyle(lengthText, "line"));
             lineFeature.set("parent_id", feature.ol_uid);
@@ -745,15 +766,13 @@ const MapComponent = ({
         });
         break;
       }
-      case "identify":
-        if (mapElement) {
-          mapElement.style.cursor = "help";
-        }
+      case "identify": {
         identifyListenerKey.current = map.on(
           "singleclick",
           identifyClickListener
         );
         break;
+      }
       default:
         break;
     }
@@ -762,6 +781,10 @@ const MapComponent = ({
   return (
     <div className="map-container">
       <BaseMapManager map={olMap.current} baseLayerStates={baseLayerStates} />
+      <CustomUtmGrid
+        map={olMap.current}
+        isVisible={graticuleEnabled && graticuleType === "UTM"}
+      />
       <div
         ref={mapRef}
         id="map"

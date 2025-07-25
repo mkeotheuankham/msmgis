@@ -41,7 +41,11 @@ const RibbonToolbar = ({
 }) => {
   const handleTabClick = (tab) => setActiveTab(tab);
   const handleToolClick = useCallback(
-    (tool) => setActiveTool(tool),
+    (toolName) => {
+      setActiveTool((currentTool) =>
+        currentTool === toolName ? "pan" : toolName
+      );
+    },
     [setActiveTool]
   );
   const handlePanelToggle = (panelName) => {
