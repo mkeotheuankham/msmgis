@@ -35,7 +35,6 @@ const RibbonToolbar = ({
   setIsImportModalVisible,
   setIsExportModalVisible,
   setIsImageModalVisible,
-  handleClearMap,
   handleZoomIn,
   handleZoomOut,
   handleZoomToLayer,
@@ -117,11 +116,6 @@ const RibbonToolbar = ({
                 icon={<Edit size={18} />}
                 label="Edit"
                 toolName="edit"
-              />
-              <RibbonButton
-                icon={<Eraser size={18} />}
-                label="Clear Map"
-                onClick={handleClearMap}
               />
             </div>
             <div className="ribbon-group-title">Map Tools</div>

@@ -151,15 +151,6 @@ function App() {
     [mapInstance]
   );
 
-  const handleClearMap = useCallback(() => {
-    if (mapInstance) {
-      const editorLayer = getLayerByName("editorLayer");
-      if (editorLayer) editorLayer.getSource().clear();
-      setImportedLayers([]);
-      setImageLayers([]);
-    }
-  }, [mapInstance, getLayerByName]);
-
   const handleZoomIn = useCallback(() => {
     if (mapInstance)
       mapInstance.getView().setZoom(mapInstance.getView().getZoom() + 1);
@@ -526,7 +517,6 @@ function App() {
         setIsImportModalVisible={setIsImportModalVisible}
         setIsImageModalVisible={setIsImageModalVisible}
         setIsExportModalVisible={setIsExportModalVisible}
-        handleClearMap={handleClearMap}
         handleZoomIn={handleZoomIn}
         handleZoomOut={handleZoomOut}
         handleZoomToLayer={handleZoomToLayer}
