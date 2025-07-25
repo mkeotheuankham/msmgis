@@ -1,7 +1,6 @@
 import React, { useCallback } from "react";
 import {
   Hand,
-  Eraser,
   MapPin,
   PenLine,
   Hexagon,
@@ -22,6 +21,8 @@ import {
   Image as ImageIcon,
   Undo,
   Redo,
+  Save, // **ເພີ່ມ:** Import icon
+  CloudDownload, // **ເພີ່ມ:** Import icon
 } from "lucide-react";
 import "./RibbonToolbar.css";
 
@@ -43,6 +44,9 @@ const RibbonToolbar = ({
   handleRedo,
   canUndo,
   canRedo,
+  // **ເພີ່ມ:** Props ໃໝ່
+  handleSaveProject,
+  handleLoadProject,
 }) => {
   const handleTabClick = (tab) => setActiveTab(tab);
 
@@ -250,6 +254,22 @@ const RibbonToolbar = ({
               />
             </div>
             <div className="ribbon-group-title">Data</div>
+          </div>
+          {/* **ເພີ່ມ:** ກຸ່ມປຸ່ມໃໝ່ສຳລັບການບັນທຶກ */}
+          <div className="ribbon-group">
+            <div className="ribbon-buttons">
+              <RibbonButton
+                icon={<Save size={18} />}
+                label="Save Project"
+                onClick={handleSaveProject}
+              />
+              <RibbonButton
+                icon={<CloudDownload size={18} />}
+                label="Load Project"
+                onClick={handleLoadProject}
+              />
+            </div>
+            <div className="ribbon-group-title">Project</div>
           </div>
         </div>
         <div className={`tab-pane ${activeTab === "analysis" ? "active" : ""}`}>
