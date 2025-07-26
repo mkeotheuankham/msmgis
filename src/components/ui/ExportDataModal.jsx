@@ -37,7 +37,7 @@ const ExportDataModal = ({
   }, [isVisible]);
 
   useEffect(() => {
-    if (isVisible) {
+    if (isVisible && mapInstance) {
       const editorLayer = mapInstance
         .getLayers()
         .getArray()
@@ -258,6 +258,14 @@ const ExportDataModal = ({
                   onClick={() => setExportFormat("kml")}
                 >
                   <FileArchive size={16} /> KML
+                </button>
+                <button
+                  className={`format-button ${
+                    exportFormat === "shp" ? "active" : ""
+                  }`}
+                  onClick={() => setExportFormat("shp")}
+                >
+                  <FileArchive size={16} /> SHP (.zip)
                 </button>
                 <button
                   className={`format-button ${

@@ -15,7 +15,7 @@ import HistoryManager from "./utils/HistoryManager";
 import "./App.css";
 import shp from "shpjs";
 import { KML, GeoJSON } from "ol/format";
-import { fromLonLat } from "ol/proj";
+import { fromLonLat, toLonLat } from "ol/proj";
 import { register } from "ol/proj/proj4";
 import Feature from "ol/Feature";
 import Point from "ol/geom/Point";
@@ -23,6 +23,7 @@ import { v4 as uuidv4 } from "uuid";
 import proj4 from "proj4";
 import VectorSource from "ol/source/Vector";
 import { createEmpty, extend, isEmpty } from "ol/extent";
+import { saveAs } from "file-saver";
 
 // Define full projection systems
 const projectionDefs = [
@@ -99,7 +100,6 @@ function App() {
     carto: { name: "Carto Voyager", visible: false, opacity: 1 },
   });
 
-  // **ເພີ່ມ:** State ແລະ Ref ສຳລັບ Undo/Redo
   const historyManagerRef = useRef(new HistoryManager());
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -475,9 +475,124 @@ function App() {
     setIsImageEditorModalVisible(false);
   };
 
-  const handleExportData = useCallback((layerId, format) => {
-    console.log(`Exporting layer ${layerId} in ${format} format.`);
-  }, []);
+  const handleExportData = useCallback(
+    (layerId, format) => {
+      let layerToExport;
+      let features;
+      let layerName;
+
+      if (layerId === "editorLayer") {
+        layerToExport = mapInstance
+          .getLayers()
+          .getArray()
+          .find((l) => l.get("name") === "editorLayer");
+        features = layerToExport?.getSource().getFeatures() || [];
+        layerName = "Drawn_Features";
+      } else {
+        layerToExport = importedLayers.find((l) => l.id === layerId);
+        features = layerToExport?.features || [];
+        layerName = layerToExport?.name.split(".")[0] || "Exported_Layer";
+      }
+
+      if (!features || features.length === 0) {
+        alert("No features to export in the selected layer.");
+        return;
+      }
+
+      const formatOptions = {
+        dataProjection: "EPSG:4326",
+        featureProjection: "EPSG:3857",
+      };
+
+      try {
+        switch (format) {
+          case "geojson": {
+            const geojsonFormat = new GeoJSON();
+            const geojsonString = geojsonFormat.writeFeatures(
+              features,
+              formatOptions
+            );
+            const blob = new Blob([geojsonString], {
+              type: "application/json",
+            });
+            saveAs(blob, `${layerName}.geojson`);
+            break;
+          }
+          case "kml": {
+            const kmlFormat = new KML();
+            const kmlString = kmlFormat.writeFeatures(features, formatOptions);
+            const blob = new Blob([kmlString], {
+              type: "application/vnd.google-earth.kml+xml",
+            });
+            saveAs(blob, `${layerName}.kml`);
+            break;
+          }
+          case "csv": {
+            const pointFeatures = features.filter(
+              (f) => f.getGeometry().getType() === "Point"
+            );
+            if (pointFeatures.length === 0) {
+              alert("No point features found in this layer to export as CSV.");
+              return;
+            }
+            let csvContent = "";
+            const headers = new Set(["longitude", "latitude"]);
+            pointFeatures.forEach((f) => {
+              Object.keys(f.getProperties()).forEach((key) => {
+                if (key !== "geometry") {
+                  headers.add(key);
+                }
+              });
+            });
+
+            const headerArray = Array.from(headers);
+            csvContent += headerArray.join(",") + "\r\n";
+
+            pointFeatures.forEach((f) => {
+              const coords = toLonLat(f.getGeometry().getCoordinates());
+              const properties = f.getProperties();
+              const row = headerArray.map((header) => {
+                if (header === "longitude") return coords[0];
+                if (header === "latitude") return coords[1];
+                const value = properties[header] || "";
+                return `"${String(value).replace(/"/g, '""')}"`;
+              });
+              csvContent += row.join(",") + "\r\n";
+            });
+
+            const blob = new Blob([csvContent], {
+              type: "text/csv;charset=utf-8;",
+            });
+            saveAs(blob, `${layerName}.csv`);
+            break;
+          }
+          case "shp": {
+            const geojsonFormat = new GeoJSON();
+            const geojson = geojsonFormat.writeFeaturesObject(
+              features,
+              formatOptions
+            );
+            shp.download(geojson, {
+              folder: layerName,
+              types: {
+                point: "points",
+                polygon: "polygons",
+                line: "lines",
+              },
+            });
+            break;
+          }
+          default:
+            alert(`Format '${format}' is not supported yet.`);
+        }
+      } catch (error) {
+        console.error("Export failed:", error);
+        alert(`An error occurred during export: ${error.message}`);
+      }
+    },
+    [mapInstance, importedLayers]
+  );
+
   const toggleHistoricalLayer = useCallback((isActive) => {
     setIsHistoricalLayerActive(isActive);
     setIsTimeSliderVisible(isActive);
