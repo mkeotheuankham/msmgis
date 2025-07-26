@@ -12,6 +12,7 @@ import ExportDataModal from "./components/ui/ExportDataModal";
 import ImageLayerModal from "./components/ui/ImageLayerModal";
 import ImageEditorModal from "./components/ui/ImageEditorModal";
 import HistoryManager from "./utils/HistoryManager";
+import AnalysisPanel from "./components/ui/AnalysisPanel";
 import "./App.css";
 import shp from "shpjs";
 import { KML, GeoJSON } from "ol/format";
@@ -24,6 +25,7 @@ import proj4 from "proj4";
 import VectorSource from "ol/source/Vector";
 import { createEmpty, extend, isEmpty } from "ol/extent";
 import { saveAs } from "file-saver";
+import * as turf from "@turf/turf";
 
 // Define full projection systems
 const projectionDefs = [
@@ -617,6 +619,164 @@ function App() {
     setIsStyleEditorVisible(false);
   };
 
+  // The main analysis logic
+  const handleRunAreaAnalysis = useCallback(
+    ({ layerId, attributeName }) => {
+      const layerIndex = importedLayers.findIndex((l) => l.id === layerId);
+      if (layerIndex === -1) {
+        alert("Layer not found.");
+        return;
+      }
+
+      const targetLayer = importedLayers[layerIndex];
+      const geojsonFormat = new GeoJSON();
+
+      try {
+        const newFeatures = targetLayer.features.map((feature) => {
+          // Clone feature to avoid modifying the original
+          const newFeature = feature.clone();
+
+          // Convert OL feature to GeoJSON feature for Turf
+          const geojsonFeature = geojsonFormat.writeFeatureObject(feature, {
+            featureProjection: "EPSG:3857", // Map's projection
+            dataProjection: "EPSG:4326", // Standard projection for calculation
+          });
+
+          // Calculate area using Turf.js (result is in square meters)
+          const area = turf.area(geojsonFeature);
+
+          // Set the new attribute
+          newFeature.set(attributeName, area);
+          return newFeature;
+        });
+
+        // Create a new layer object with the updated features
+        const updatedLayer = {
+          ...targetLayer,
+          features: newFeatures,
+          name: `${targetLayer.name} (area)`, // Update name to show it's analyzed
+        };
+
+        // Update the state
+        setImportedLayers((prevLayers) => {
+          const newLayers = [...prevLayers];
+          newLayers[layerIndex] = updatedLayer;
+          return newLayers;
+        });
+
+        alert(
+          `Area calculation complete. New attribute '${attributeName}' was added.`
+        );
+      } catch (error) {
+        console.error("Area analysis failed:", error);
+        alert(`An error occurred during area analysis: ${error.message}`);
+      }
+    },
+    [importedLayers]
+  );
+
+  // ADD THIS NEW FUNCTION for Distance Analysis
+  const handleRunDistanceAnalysis = useCallback(
+    ({ targetLayerId, sourceLayerId, attributeName }) => {
+      const targetLayerIndex = importedLayers.findIndex(
+        (l) => l.id === targetLayerId
+      );
+      const sourceLayer = importedLayers.find((l) => l.id === sourceLayerId);
+
+      if (targetLayerIndex === -1 || !sourceLayer) {
+        alert("Target or source layer not found.");
+        return;
+      }
+      if (!sourceLayer.features || sourceLayer.features.length === 0) {
+        alert("Source layer has no features to measure to.");
+        return;
+      }
+
+      const targetLayer = importedLayers[targetLayerIndex];
+      const geojsonFormat = new GeoJSON();
+
+      try {
+        // Convert source features to a GeoJSON FeatureCollection for turf
+        const sourceGeoJsonFeatures = sourceLayer.features.map((feature) =>
+          geojsonFormat.writeFeatureObject(feature, {
+            featureProjection: "EPSG:3857",
+            dataProjection: "EPSG:4326",
+          })
+        );
+        const sourceCollection = turf.featureCollection(sourceGeoJsonFeatures);
+
+        const newFeatures = targetLayer.features.map((feature) => {
+          const newFeature = feature.clone();
+
+          const targetGeoJsonFeature = geojsonFormat.writeFeatureObject(
+            feature,
+            {
+              featureProjection: "EPSG:3857",
+              dataProjection: "EPSG:4326",
+            }
+          );
+
+          // Use center of mass for polygons, or the feature itself for points/lines
+          const targetPoint = turf.centerOfMass(targetGeoJsonFeature);
+          let minDistance = Infinity;
+
+          // Instead of turf.nearestPoint which works on points, we iterate
+          // to use more accurate distance functions like pointToLineDistance
+          sourceCollection.features.forEach((sourceFeature) => {
+            let currentDist;
+            const geomType = turf.getType(sourceFeature);
+            if (geomType === "Point") {
+              currentDist = turf.distance(targetPoint, sourceFeature, {
+                units: "meters",
+              });
+            } else if (
+              geomType === "LineString" ||
+              geomType === "MultiLineString"
+            ) {
+              currentDist = turf.pointToLineDistance(
+                targetPoint,
+                sourceFeature,
+                { units: "meters" }
+              );
+            } else if (geomType === "Polygon" || geomType === "MultiPolygon") {
+              // Find distance to the polygon's boundary
+              const outline = turf.polygonToLine(sourceFeature);
+              currentDist = turf.pointToLineDistance(targetPoint, outline, {
+                units: "meters",
+              });
+            }
+            if (currentDist < minDistance) {
+              minDistance = currentDist;
+            }
+          });
+
+          newFeature.set(attributeName, minDistance);
+          return newFeature;
+        });
+
+        const updatedLayer = {
+          ...targetLayer,
+          features: newFeatures,
+          name: `${targetLayer.name} (dist)`,
+        };
+
+        setImportedLayers((prevLayers) => {
+          const newLayers = [...prevLayers];
+          newLayers[targetLayerIndex] = updatedLayer;
+          return newLayers;
+        });
+
+        alert(
+          `Distance analysis complete. New attribute '${attributeName}' was added.`
+        );
+      } catch (error) {
+        console.error("Distance analysis failed:", error);
+        alert(`An error occurred during distance analysis: ${error.message}`);
+      }
+    },
+    [importedLayers]
+  );
+
   return (
     <div className="app-container">
       <RibbonToolbar
@@ -671,6 +831,13 @@ function App() {
           baseLayerStates={baseLayerStates}
           onBaseMapChange={handleBaseMapChange}
           onBaseMapOpacityChange={handleBaseMapOpacityChange}
+        />
+        <AnalysisPanel
+          isVisible={activePanel === "analysis"}
+          onClose={() => setActivePanel(null)}
+          importedLayers={importedLayers}
+          onRunAreaAnalysis={handleRunAreaAnalysis}
+          onRunDistanceAnalysis={handleRunDistanceAnalysis}
         />
       </div>
       <ImportDataModal

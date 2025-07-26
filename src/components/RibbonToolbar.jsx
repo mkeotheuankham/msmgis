@@ -13,7 +13,6 @@ import {
   Layers,
   ScanSearch,
   Fullscreen,
-  Target,
   Map as BaseMapIcon,
   Edit,
   Upload,
@@ -21,8 +20,9 @@ import {
   Image as ImageIcon,
   Undo,
   Redo,
-  Save, // **ເພີ່ມ:** Import icon
-  CloudDownload, // **ເພີ່ມ:** Import icon
+  Save,
+  CloudDownload,
+  BrainCircuit, // Icon for Analysis
 } from "lucide-react";
 import "./RibbonToolbar.css";
 
@@ -44,7 +44,6 @@ const RibbonToolbar = ({
   handleRedo,
   canUndo,
   canRedo,
-  // **ເພີ່ມ:** Props ໃໝ່
   handleSaveProject,
   handleLoadProject,
 }) => {
@@ -108,6 +107,7 @@ const RibbonToolbar = ({
         </button>
       </div>
       <div className="ribbon-content">
+        {/* Home Tab Content */}
         <div className={`tab-pane ${activeTab === "home" ? "active" : ""}`}>
           <div className="ribbon-group">
             <div className="ribbon-buttons">
@@ -187,6 +187,8 @@ const RibbonToolbar = ({
             <div className="ribbon-group-title">Measure</div>
           </div>
         </div>
+
+        {/* Map Tab Content */}
         <div className={`tab-pane ${activeTab === "map" ? "active" : ""}`}>
           <div className="ribbon-group">
             <div className="ribbon-buttons">
@@ -255,7 +257,6 @@ const RibbonToolbar = ({
             </div>
             <div className="ribbon-group-title">Data</div>
           </div>
-          {/* **ເພີ່ມ:** ກຸ່ມປຸ່ມໃໝ່ສຳລັບການບັນທຶກ */}
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
@@ -272,16 +273,19 @@ const RibbonToolbar = ({
             <div className="ribbon-group-title">Project</div>
           </div>
         </div>
+
+        {/* ----- FIXED ANALYSIS TAB ----- */}
         <div className={`tab-pane ${activeTab === "analysis" ? "active" : ""}`}>
           <div className="ribbon-group">
             <div className="ribbon-buttons">
               <RibbonButton
-                icon={<Target size={18} />}
-                label="Buffer"
-                onClick={() => {}}
+                icon={<BrainCircuit size={18} />}
+                label="Analysis Tools"
+                isActive={activePanel === "analysis"}
+                onClick={() => handlePanelToggle("analysis")}
               />
             </div>
-            <div className="ribbon-group-title">Geoprocessing</div>
+            <div className="ribbon-group-title">Spatial Tools</div>
           </div>
         </div>
       </div>
