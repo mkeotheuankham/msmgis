@@ -14,7 +14,9 @@ import ImageEditorModal from "./components/ui/ImageEditorModal";
 import HistoryManager from "./utils/HistoryManager";
 import AnalysisPanel from "./components/ui/AnalysisPanel";
 import "./App.css";
+// *** THE FIX IS HERE: Using 'shpjs' for reading and 'shp-write' for writing ***
 import shp from "shpjs";
+import shpwrite from "shp-write";
 import { KML, GeoJSON } from "ol/format";
 import { fromLonLat, toLonLat } from "ol/proj";
 import { register } from "ol/proj/proj4";
@@ -478,7 +480,7 @@ function App() {
   };
 
   const handleExportData = useCallback(
-    (layerId, format) => {
+    async (layerId, format) => {
       let layerToExport;
       let features;
       let layerName;
@@ -574,14 +576,9 @@ function App() {
               features,
               formatOptions
             );
-            shp.download(geojson, {
-              folder: layerName,
-              types: {
-                point: "points",
-                polygon: "polygons",
-                line: "lines",
-              },
-            });
+
+            // Using shpwrite.download for exporting
+            shpwrite.download(geojson);
             break;
           }
           default:
@@ -619,7 +616,6 @@ function App() {
     setIsStyleEditorVisible(false);
   };
 
-  // The main analysis logic
   const handleRunAreaAnalysis = useCallback(
     ({ layerId, attributeName }) => {
       const layerIndex = importedLayers.findIndex((l) => l.id === layerId);
@@ -633,31 +629,22 @@ function App() {
 
       try {
         const newFeatures = targetLayer.features.map((feature) => {
-          // Clone feature to avoid modifying the original
           const newFeature = feature.clone();
-
-          // Convert OL feature to GeoJSON feature for Turf
           const geojsonFeature = geojsonFormat.writeFeatureObject(feature, {
-            featureProjection: "EPSG:3857", // Map's projection
-            dataProjection: "EPSG:4326", // Standard projection for calculation
+            featureProjection: "EPSG:3857",
+            dataProjection: "EPSG:4326",
           });
-
-          // Calculate area using Turf.js (result is in square meters)
           const area = turf.area(geojsonFeature);
-
-          // Set the new attribute
-          newFeature.set(attributeName, area);
+          newFeature.set(attributeName, parseFloat(area.toFixed(2)));
           return newFeature;
         });
 
-        // Create a new layer object with the updated features
         const updatedLayer = {
           ...targetLayer,
           features: newFeatures,
-          name: `${targetLayer.name} (area)`, // Update name to show it's analyzed
+          name: `${targetLayer.name} (area)`,
         };
 
-        // Update the state
         setImportedLayers((prevLayers) => {
           const newLayers = [...prevLayers];
           newLayers[layerIndex] = updatedLayer;
@@ -675,7 +662,6 @@ function App() {
     [importedLayers]
   );
 
-  // ADD THIS NEW FUNCTION for Distance Analysis
   const handleRunDistanceAnalysis = useCallback(
     ({ targetLayerId, sourceLayerId, attributeName }) => {
       const targetLayerIndex = importedLayers.findIndex(
@@ -696,7 +682,6 @@ function App() {
       const geojsonFormat = new GeoJSON();
 
       try {
-        // Convert source features to a GeoJSON FeatureCollection for turf
         const sourceGeoJsonFeatures = sourceLayer.features.map((feature) =>
           geojsonFormat.writeFeatureObject(feature, {
             featureProjection: "EPSG:3857",
@@ -707,7 +692,6 @@ function App() {
 
         const newFeatures = targetLayer.features.map((feature) => {
           const newFeature = feature.clone();
-
           const targetGeoJsonFeature = geojsonFormat.writeFeatureObject(
             feature,
             {
@@ -716,12 +700,9 @@ function App() {
             }
           );
 
-          // Use center of mass for polygons, or the feature itself for points/lines
           const targetPoint = turf.centerOfMass(targetGeoJsonFeature);
           let minDistance = Infinity;
 
-          // Instead of turf.nearestPoint which works on points, we iterate
-          // to use more accurate distance functions like pointToLineDistance
           sourceCollection.features.forEach((sourceFeature) => {
             let currentDist;
             const geomType = turf.getType(sourceFeature);
@@ -739,7 +720,6 @@ function App() {
                 { units: "meters" }
               );
             } else if (geomType === "Polygon" || geomType === "MultiPolygon") {
-              // Find distance to the polygon's boundary
               const outline = turf.polygonToLine(sourceFeature);
               currentDist = turf.pointToLineDistance(targetPoint, outline, {
                 units: "meters",
@@ -750,7 +730,7 @@ function App() {
             }
           });
 
-          newFeature.set(attributeName, minDistance);
+          newFeature.set(attributeName, parseFloat(minDistance.toFixed(2)));
           return newFeature;
         });
 
@@ -772,6 +752,69 @@ function App() {
       } catch (error) {
         console.error("Distance analysis failed:", error);
         alert(`An error occurred during distance analysis: ${error.message}`);
+      }
+    },
+    [importedLayers]
+  );
+
+  const handleRunShapeAnalysis = useCallback(
+    ({ layerId, attributeName }) => {
+      const layerIndex = importedLayers.findIndex((l) => l.id === layerId);
+      if (layerIndex === -1) {
+        alert("Layer not found.");
+        return;
+      }
+
+      const targetLayer = importedLayers[layerIndex];
+      const geojsonFormat = new GeoJSON();
+
+      try {
+        const newFeatures = targetLayer.features.map((feature) => {
+          const newFeature = feature.clone();
+
+          const geojsonFeature = geojsonFormat.writeFeatureObject(feature, {
+            featureProjection: "EPSG:3857",
+            dataProjection: "EPSG:4326",
+          });
+
+          const bbox = turf.bbox(geojsonFeature);
+
+          const westPoint = turf.point([bbox[0], bbox[1]]);
+          const eastPoint = turf.point([bbox[2], bbox[1]]);
+          const southPoint = turf.point([bbox[0], bbox[1]]);
+          const northPoint = turf.point([bbox[0], bbox[3]]);
+
+          const width = turf.distance(westPoint, eastPoint, {
+            units: "meters",
+          });
+          const depth = turf.distance(southPoint, northPoint, {
+            units: "meters",
+          });
+
+          const ratio = depth > 0 ? width / depth : 0;
+
+          newFeature.set(attributeName, parseFloat(ratio.toFixed(4)));
+          return newFeature;
+        });
+
+        const updatedLayer = {
+          ...targetLayer,
+          features: newFeatures,
+          name: `${targetLayer.name} (shape)`,
+        };
+
+        setImportedLayers((prevLayers) => {
+          const newLayers = [...prevLayers];
+          newLayers[layerIndex] = updatedLayer;
+          return newLayers;
+        });
+
+        alert(
+          `Shape analysis complete. New attribute '${attributeName}' was added.`
+        );
+      } catch (error) {
+        console.error("Shape analysis failed:", error);
+        alert(`An error occurred during shape analysis: ${error.message}`);
       }
     },
     [importedLayers]
@@ -838,6 +881,7 @@ function App() {
           importedLayers={importedLayers}
           onRunAreaAnalysis={handleRunAreaAnalysis}
           onRunDistanceAnalysis={handleRunDistanceAnalysis}
+          onRunShapeAnalysis={handleRunShapeAnalysis}
         />
       </div>
       <ImportDataModal

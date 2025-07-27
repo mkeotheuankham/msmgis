@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { AreaChart, Waypoints } from "lucide-react";
+import { AreaChart, Waypoints, SquareAsterisk } from "lucide-react";
 
 const AnalysisPanel = ({
   isVisible,
@@ -7,6 +7,7 @@ const AnalysisPanel = ({
   importedLayers,
   onRunAreaAnalysis,
   onRunDistanceAnalysis,
+  onRunShapeAnalysis,
 }) => {
   // State for Area Analysis
   const [areaTargetLayerId, setAreaTargetLayerId] = useState("");
@@ -16,6 +17,10 @@ const AnalysisPanel = ({
   const [distTargetLayerId, setDistTargetLayerId] = useState("");
   const [distSourceLayerId, setDistSourceLayerId] = useState("");
   const [distAttributeName, setDistAttributeName] = useState("dist_m");
+
+  // State for Shape Analysis
+  const [shapeTargetLayerId, setShapeTargetLayerId] = useState("");
+  const [shapeAttributeName, setShapeAttributeName] = useState("wd_ratio");
 
   const polygonLayers = importedLayers.filter((layer) => {
     if (!layer.features || layer.features.length === 0) return false;
@@ -58,6 +63,22 @@ const AnalysisPanel = ({
       targetLayerId: distTargetLayerId,
       sourceLayerId: distSourceLayerId,
       attributeName: distAttributeName.trim(),
+    });
+    onClose();
+  };
+
+  const handleShapeRunClick = () => {
+    if (!shapeTargetLayerId) {
+      alert("Please select a layer for Shape Analysis.");
+      return;
+    }
+    if (!shapeAttributeName.trim()) {
+      alert("Please provide an attribute name for the ratio.");
+      return;
+    }
+    onRunShapeAnalysis({
+      layerId: shapeTargetLayerId,
+      attributeName: shapeAttributeName.trim(),
     });
     onClose();
   };
@@ -155,7 +176,6 @@ const AnalysisPanel = ({
     <>
       <style>{styles}</style>
       <div className={`panel ${isVisible ? "visible" : ""}`}>
-        {/* The (X) button has been removed from the header */}
         <div className="panel-header" style={{ justifyContent: "center" }}>
           <h3>Analysis Tools</h3>
         </div>
@@ -266,6 +286,53 @@ const AnalysisPanel = ({
                 {importedLayers.length < 2
                   ? "Need at least 2 layers"
                   : "Run Distance Analysis"}
+              </button>
+            </div>
+          </div>
+
+          {/* Shape Analysis Tool Card */}
+          <div className="analysis-tool-card">
+            <div className="card-header">
+              <SquareAsterisk size={18} />
+              <h4>Shape Analysis (Width/Depth)</h4>
+            </div>
+            <div className="card-body">
+              <p className="card-description">
+                Calculates the width-to-depth ratio of each polygon's bounding
+                box.
+              </p>
+              <div className="form-group">
+                <label>Target Polygon Layer</label>
+                <select
+                  value={shapeTargetLayerId}
+                  onChange={(e) => setShapeTargetLayerId(e.target.value)}
+                >
+                  <option value="" disabled>
+                    -- Select a layer --
+                  </option>
+                  {polygonLayers.map((layer) => (
+                    <option key={layer.id} value={layer.id}>
+                      {layer.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>New Ratio Attribute Name</label>
+                <input
+                  type="text"
+                  value={shapeAttributeName}
+                  onChange={(e) => setShapeAttributeName(e.target.value)}
+                />
+              </div>
+              <button
+                className="run-button"
+                onClick={handleShapeRunClick}
+                disabled={polygonLayers.length === 0}
+              >
+                {polygonLayers.length > 0
+                  ? "Run Shape Analysis"
+                  : "No Polygon Layers"}
               </button>
             </div>
           </div>

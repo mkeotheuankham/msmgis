@@ -20,6 +20,7 @@
     "react-icons": "^5.5.0",
     "shapefile": "^0.6.6",
     "shapefile.js": "^1.1.4",
+    "shp-write": "^0.3.2",
     "shpjs": "^6.1.0",
     "uuid": "^11.1.0"
   },
@@ -27,6 +28,7 @@
     "@eslint/js": "^9.29.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.7.0",
     "@vitejs/plugin-react-swc": "^3.10.2",
     "eslint": "^9.29.0",
     "eslint-plugin-react-hooks": "^5.2.0",

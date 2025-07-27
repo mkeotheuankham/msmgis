@@ -259,6 +259,7 @@ const ExportDataModal = ({
                 >
                   <FileArchive size={16} /> KML
                 </button>
+                {/* ADDED SHAPEFILE BUTTON */}
                 <button
                   className={`format-button ${
                     exportFormat === "shp" ? "active" : ""
