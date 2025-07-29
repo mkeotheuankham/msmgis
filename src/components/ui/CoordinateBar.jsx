@@ -305,7 +305,8 @@ const CoordinateBar = ({ map }) => {
 
         .coordinate-widget-container {
           position: absolute;
-          bottom: 30px; /* ປັບຄ່າ bottom ໃຫ້ຕິດກັບ StatusBar */
+          /* === ການປ່ຽນແປງ === ປ່ຽນຄ່າ bottom ຈາກ 30px ເປັນ 1rem */
+          bottom: 1rem; 
           left: 1rem;
           z-index: 1001;
           display: flex;
@@ -449,14 +450,14 @@ const CoordinateBar = ({ map }) => {
 
         .copy-success-message {
           position: absolute;
-          /* Positioning is now relative to the viewport/map, not widget-container flex flow */
+          /* === ການປ່ຽນແປງ === ປ່ຽນຄ່າ bottom ຈາກ 30px ເປັນ 1rem ເພື່ອໃຫ້ສອດຄ່ອງກັນ */
           bottom: calc(
-            30px + var(--fab-size) + var(--gap-fab-panel) + 0.5rem
-          ); /* ປັບຄ່າ bottom ໃຫ້ສອດຄ່ອງກັນ */
-          left: 1rem; /* Align with widget container left */
+            1rem + var(--fab-size) + var(--gap-fab-panel) + 0.5rem
+          );
+          left: 1rem;
           transform: translateX(
             0
-          ); /* Remove transform as it's aligned to left */
+          );
           background-color: #4caf50;
           color: white;
           padding: 5px 10px;

@@ -12,6 +12,7 @@ import ImageLayerModal from "./components/ui/ImageLayerModal";
 import ImageEditorModal from "./components/ui/ImageEditorModal";
 import HistoryManager from "./utils/HistoryManager";
 import AnalysisPanel from "./components/ui/AnalysisPanel";
+import CoordinateBar from "./components/ui/CoordinateBar";
 import "./App.css";
 // *** THE FIX IS HERE: Using 'shpjs' for reading and 'shp-write' for writing ***
 import shp from "shpjs";
@@ -810,6 +811,7 @@ function App() {
           baseLayerStates={baseLayerStates}
           onFeatureSelect={handleFeatureSelect}
         />
+        <CoordinateBar map={mapInstance} />
         <LayerPanel
           isVisible={activePanel === "layers"}
           importedLayers={importedLayers}
