@@ -4,7 +4,6 @@ import MapComponent from "./components/MapComponent";
 import StatusBar from "./components/StatusBar";
 import LayerPanel from "./components/ui/LayerPanel";
 import BaseMapPanel from "./components/ui/BaseMapPanel";
-import TimeSliderPanel from "./components/ui/TimeSliderPanel";
 import ImportDataModal from "./components/ui/ImportDataModal";
 import AttributePanel from "./components/ui/AttributePanel";
 import StyleEditorModal from "./components/ui/StyleEditorModal";
@@ -28,49 +27,12 @@ import VectorSource from "ol/source/Vector";
 import { createEmpty, extend, isEmpty } from "ol/extent";
 import { saveAs } from "file-saver";
 import * as turf from "@turf/turf";
+// --- ນຳເຂົ້າຂໍ້ມູນ Configuration ຈາກໄຟລ໌ໃໝ່ ---
+import { projectionDefs, utmProjections } from "./config/projections";
 
-// Define full projection systems
-const projectionDefs = [
-  ["EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs"],
-  [
-    "EPSG:4240",
-    "+title=Indian 1975 +proj=longlat +ellps=evrst30 +towgs84=214,836,303,0,0,0,0 +no_defs",
-  ],
-  [
-    "EPSG:4674",
-    "+title=Lao 1997 +proj=longlat +ellps=krass +towgs84=-46.012,127.108,38.131,0,0,0,0 +no_defs",
-  ],
-  ["WGS84_UTM47N", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs"],
-  ["WGS84_UTM48N", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs"],
-  [
-    "INDIAN1975_UTM47N",
-    "+proj=utm +zone=47 +ellps=evrst30 +towgs84=214,836,303,0,0,0,0 +units=m +no_defs",
-  ],
-  [
-    "INDIAN1975_UTM48N",
-    "+proj=utm +zone=48 +ellps=evrst30 +towgs84=214,836,303,0,0,0,0 +units=m +no_defs",
-  ],
-  [
-    "LAO1997_UTM47N",
-    "+proj=utm +zone=47 +ellps=krass +towgs84=-46.012,127.108,38.131,0,0,0,0 +units=m +no_defs",
-  ],
-  [
-    "LAO1997_UTM48N",
-    "+proj=utm +zone=48 +ellps=krass +towgs84=-46.012,127.108,38.131,0,0,0,0 +units=m +no_defs",
-  ],
-];
+// --- ລົງທະບຽນລະບົບພິກັດທີ່ນຳເຂົ້າມາ ---
 proj4.defs(projectionDefs);
 register(proj4);
-
-const utmProjections = [
-  { key: "WGS84_UTM47N", name: "WGS 84 / UTM zone 47N" },
-  { key: "WGS84_UTM48N", name: "WGS 84 / UTM zone 48N" },
-  { key: "INDIAN1975_UTM47N", name: "Indian 1975 / UTM zone 47N" },
-  { key: "INDIAN1975_UTM48N", name: "Indian 1975 / UTM zone 48N" },
-  { key: "LAO1997_UTM47N", name: "Lao 1997 / UTM zone 47N" },
-  { key: "LAO1997_UTM48N", name: "Lao 1997 / UTM zone 48N" },
-  { key: "EPSG:4326", name: "WGS 84 (Latitude/Longitude)" },
-];
 
 function App() {
   const [activeTool, setActiveTool] = useState("pan");
@@ -88,9 +50,7 @@ function App() {
   const [graticuleEnabled, setGraticuleEnabled] = useState(false);
   const [graticuleType, setGraticuleType] = useState("WGS84");
   const [showGraticuleOptions, setShowGraticuleOptions] = useState(false);
-  const [isHistoricalLayerActive, setIsHistoricalLayerActive] = useState(false);
-  const [isTimeSliderVisible, setIsTimeSliderVisible] = useState(false);
-  const [selectedDate, setSelectedDate] = useState("2024-01-01");
+
   const [selectedFeatureInfo, setSelectedFeatureInfo] = useState(null);
   const [isStyleEditorVisible, setIsStyleEditorVisible] = useState(false);
   const [stylingLayer, setStylingLayer] = useState(null);
@@ -592,10 +552,6 @@ function App() {
     [mapInstance, importedLayers]
   );
 
-  const toggleHistoricalLayer = useCallback((isActive) => {
-    setIsHistoricalLayerActive(isActive);
-    setIsTimeSliderVisible(isActive);
-  }, []);
   const handleFeatureSelect = (info) => {
     setSelectedFeatureInfo(info);
   };
@@ -829,9 +785,6 @@ function App() {
         setActiveTab={setActiveTab}
         activePanel={activePanel}
         setActivePanel={setActivePanel}
-        isTimeSliderVisible={isTimeSliderVisible}
-        setIsTimeSliderVisible={setIsTimeSliderVisible}
-        toggleHistoricalLayer={toggleHistoricalLayer}
         setIsImportModalVisible={setIsImportModalVisible}
         setIsImageModalVisible={setIsImageModalVisible}
         setIsExportModalVisible={setIsExportModalVisible}
@@ -850,8 +803,6 @@ function App() {
           setMapInstance={setMapInstance}
           graticuleEnabled={graticuleEnabled}
           graticuleType={graticuleType}
-          isHistoricalLayerActive={isHistoricalLayerActive}
-          selectedDate={selectedDate}
           importedLayers={importedLayers}
           imageLayers={imageLayers}
           historyManager={historyManagerRef.current}
@@ -921,11 +872,6 @@ function App() {
         layer={stylingLayer}
         onClose={() => setIsStyleEditorVisible(false)}
         onSave={handleStyleSave}
-      />
-      <TimeSliderPanel
-        isVisible={isTimeSliderVisible}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
       />
       <StatusBar
         graticuleEnabled={graticuleEnabled}
