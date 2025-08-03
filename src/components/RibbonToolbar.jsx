@@ -6,7 +6,6 @@ import {
   Hexagon,
   Circle,
   Ruler,
-  LandPlot,
   Info,
   ZoomIn,
   ZoomOut,
@@ -172,11 +171,6 @@ const RibbonToolbar = ({
                 icon={<Ruler size={18} />}
                 label="Distance"
                 toolName="measure-distance"
-              />
-              <RibbonButton
-                icon={<LandPlot size={18} />}
-                label="Area"
-                toolName="measure-area"
               />
               <RibbonButton
                 icon={<Info size={18} />}
