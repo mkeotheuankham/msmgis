@@ -16,7 +16,7 @@ const baseLayerDefinitions = [
   },
   {
     name: "topo",
-    url: "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}.jpg",
+    url: "https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}.jpg?api_key=b2c8247f-5ec8-4829-8527-ce38f76d0453",
     maxZoom: 20,
     attributions: [
       "© CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data)",
