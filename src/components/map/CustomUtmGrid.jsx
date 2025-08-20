@@ -14,11 +14,13 @@ const CustomUtmGrid = ({ map, isVisible }) => {
 
   // Function to get the custom grid label
   const getGridLabel = (easting, northing) => {
-    const letterCode = String.fromCharCode(
-      65 + (Math.floor(easting / 100000) % 26)
-    );
+    // **ແກ້ໄຂ:** ลบ 2 เพื่อให้ค่า easting 200,000-299,999 เริ่มต้นที่ 'A'
+    const letterIndex = Math.floor(easting / 100000) - 2;
+    const letterCode = String.fromCharCode(65 + (letterIndex % 26));
+
     const eastingLabel = Math.floor((easting % 1000000) / 1000);
     const northingLabel = Math.floor((northing % 1000000) / 1000);
+
     return `${letterCode}-${eastingLabel}-${northingLabel}`;
   };
 
