@@ -35,10 +35,10 @@ const BaseMapPanel = ({
 }) => {
   const baseMaps = [
     { key: "osm", name: "Street Map", icon: StreetMapIcon },
-    { key: "satellite", name: "Esri Satellite", icon: Satellite },
     { key: "googleSatellite", name: "Google Satellite", icon: Globe },
     { key: "googleHybrid", name: "Google Hybrid", icon: Earth },
-    { key: "topo", name: "Stadia AlidadeSatellite", icon: MapPlus },
+    { key: "satellite", name: "Esri Satellite", icon: Satellite },
+    // { key: "topo", name: "Stadia AlidadeSatellite", icon: MapPlus },
     { key: "carto", name: "Carto Voyager", icon: Layers2 },
   ];
 
