@@ -1,14 +1,24 @@
 import React, { useEffect, useRef } from "react";
 import { X as CloseIcon, Info } from "lucide-react";
 
-const AttributePanel = ({ info, onClose, map }) => {
+// 1. Import the context hook
+import { useAppContext } from "../../hooks/useAppContext";
+
+const AttributePanel = () => {
+  // 2. Get state and functions from the context
+  const { selectedFeatureInfo, handleCloseAttributeInfo, mapInstance } =
+    useAppContext();
+
   const panelRef = useRef(null);
 
   useEffect(() => {
-    if (!info || !map || !panelRef.current) return;
+    // Use state from context
+    if (!selectedFeatureInfo || !mapInstance || !panelRef.current) return;
 
-    const pixel = map.getPixelFromCoordinate(info.coordinate);
-    const mapSize = map.getSize();
+    const pixel = mapInstance.getPixelFromCoordinate(
+      selectedFeatureInfo.coordinate
+    );
+    const mapSize = mapInstance.getSize();
     const panelElement = panelRef.current;
 
     let left = pixel[0] + 20;
@@ -30,13 +40,14 @@ const AttributePanel = ({ info, onClose, map }) => {
 
     panelElement.style.left = `${left}px`;
     panelElement.style.top = `${top}px`;
-  }, [info, map]);
+  }, [selectedFeatureInfo, mapInstance]); // Update dependency array
 
-  if (!info || !info.attributes) return null;
+  // Do not render if there is no feature info
+  if (!selectedFeatureInfo || !selectedFeatureInfo.attributes) return null;
 
-  const attributesToShow = Object.entries(info.attributes).filter(
-    ([key]) => key.toLowerCase() !== "geometry"
-  );
+  const attributesToShow = Object.entries(
+    selectedFeatureInfo.attributes
+  ).filter(([key]) => key.toLowerCase() !== "geometry");
 
   const styles = `
     .attribute-panel {
@@ -138,7 +149,10 @@ const AttributePanel = ({ info, onClose, map }) => {
             <Info size={16} />
             <span>Feature Attributes</span>
           </div>
-          <button onClick={onClose} className="attribute-panel-close-btn">
+          <button
+            onClick={handleCloseAttributeInfo}
+            className="attribute-panel-close-btn"
+          >
             <CloseIcon size={18} />
           </button>
         </div>

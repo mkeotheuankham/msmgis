@@ -1,36 +1,56 @@
 import React, { useState, useEffect } from "react";
 import { Palette, X as CloseIcon } from "lucide-react";
 
-const StyleEditorModal = ({ layer, isVisible, onClose, onSave }) => {
+// 1. Import the context hook
+import { useAppContext } from "../../hooks/useAppContext";
+
+const StyleEditorModal = () => {
+  // 2. Get state and functions from the context
+  const {
+    isStyleEditorVisible,
+    stylingLayer,
+    setIsStyleEditorVisible,
+    handleStyleSave,
+  } = useAppContext();
+
+  // Internal state for style properties
   const [fillColor, setFillColor] = useState("#ff00ff");
   const [strokeColor, setStrokeColor] = useState("#ff00ff");
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [pointColor, setPointColor] = useState("#ff00ff");
   const [pointSize, setPointSize] = useState(7);
 
+  // Effect to populate the form when the modal becomes visible or the layer changes
   useEffect(() => {
-    if (isVisible && layer) {
-      const currentStyle = layer.style || {};
+    if (isStyleEditorVisible && stylingLayer) {
+      const currentStyle = stylingLayer.style || {};
       setFillColor(currentStyle.fillColor || "#ff00ff");
       setStrokeColor(currentStyle.strokeColor || "#ff00ff");
       setStrokeWidth(currentStyle.strokeWidth || 3);
       setPointColor(currentStyle.pointColor || "#ff00ff");
       setPointSize(currentStyle.pointSize || 7);
     }
-  }, [isVisible, layer]);
+  }, [isStyleEditorVisible, stylingLayer]);
 
-  if (!isVisible || !layer) return null;
+  // Local onClose handler
+  const onClose = () => setIsStyleEditorVisible(false);
 
-  const handleSave = () => {
-    onSave(layer.id, {
-      fillColor,
-      strokeColor,
-      strokeWidth,
-      pointColor,
-      pointSize,
-    });
+  // Local handleSave that calls the context function
+  const onSave = () => {
+    if (stylingLayer) {
+      handleStyleSave(stylingLayer.id, {
+        fillColor,
+        strokeColor,
+        strokeWidth,
+        pointColor,
+        pointSize,
+      });
+    }
     onClose();
   };
+
+  // Do not render if not visible or no layer is selected for styling
+  if (!isStyleEditorVisible || !stylingLayer) return null;
 
   const styles = `
     .modal-overlay {
@@ -162,7 +182,7 @@ const StyleEditorModal = ({ layer, isVisible, onClose, onSave }) => {
             <button className="modal-button-secondary" onClick={onClose}>
               Cancel
             </button>
-            <button className="modal-button" onClick={handleSave}>
+            <button className="modal-button" onClick={onSave}>
               Save Style
             </button>
           </div>

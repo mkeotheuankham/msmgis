@@ -1,7 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { X as CloseIcon, UploadCloud } from "lucide-react";
 
-const ImageLayerModal = ({ isVisible, onClose, onAddImage }) => {
+// 1. Import the context hook
+import { useAppContext } from "../../hooks/useAppContext";
+
+const ImageLayerModal = () => {
+  // 2. Get state and functions from the context
+  const { isImageModalVisible, setIsImageModalVisible, handleAddImageLayer } =
+    useAppContext();
+
   const [selectedFileText, setSelectedFileText] = useState(
     "Click or Drag & Drop Files Here"
   );
@@ -14,9 +21,12 @@ const ImageLayerModal = ({ isVisible, onClose, onAddImage }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const modalRef = useRef(null);
 
+  // Local onClose handler that uses the setter from context
+  const onClose = () => setIsImageModalVisible(false);
+
   // Effect to center the modal when it first appears
   useEffect(() => {
-    if (isVisible && modalRef.current) {
+    if (isImageModalVisible && modalRef.current) {
       const modalWidth = modalRef.current.offsetWidth;
       const modalHeight = modalRef.current.offsetHeight;
       setPosition({
@@ -24,18 +34,18 @@ const ImageLayerModal = ({ isVisible, onClose, onAddImage }) => {
         y: (window.innerHeight - modalHeight) / 2,
       });
     }
-  }, [isVisible]);
+  }, [isImageModalVisible]);
 
   // Reset state when modal is closed
   useEffect(() => {
-    if (!isVisible) {
+    if (!isImageModalVisible) {
       setSelectedFileText("Click or Drag & Drop Files Here");
       setIsDragging(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     }
-  }, [isVisible]);
+  }, [isImageModalVisible]);
 
   const processFiles = (files) => {
     if (!files || files.length === 0) return;
@@ -125,7 +135,8 @@ const ImageLayerModal = ({ isVisible, onClose, onAddImage }) => {
 
           const calculatedExtent = [minX, minY, maxX, maxY];
 
-          onAddImage(imageFile, calculatedExtent, projectionKey);
+          // Use the handler from the context
+          handleAddImageLayer(imageFile, calculatedExtent, projectionKey);
           onClose();
         };
         img.onerror = () => {
@@ -201,7 +212,7 @@ const ImageLayerModal = ({ isVisible, onClose, onAddImage }) => {
     setIsDragging(false);
   };
 
-  if (!isVisible) return null;
+  if (!isImageModalVisible) return null;
 
   const styles = `
   .modal-overlay-draggable {

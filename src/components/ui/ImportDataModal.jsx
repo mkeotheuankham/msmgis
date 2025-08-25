@@ -7,7 +7,14 @@ import {
   X as CloseIcon,
 } from "lucide-react";
 
-const ImportDataModal = ({ isVisible, onClose, onFileImport }) => {
+// 1. Import the context hook
+import { useAppContext } from "../../hooks/useAppContext";
+
+const ImportDataModal = () => {
+  // 2. Get state and functions from the context
+  const { isImportModalVisible, setIsImportModalVisible, handleFileImport } =
+    useAppContext();
+
   const [isDragging, setIsDragging] = useState(false); // For file drag over
   const fileInputRef = useRef(null);
 
@@ -17,9 +24,12 @@ const ImportDataModal = ({ isVisible, onClose, onFileImport }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const modalRef = useRef(null);
 
+  // Local onClose handler
+  const onClose = () => setIsImportModalVisible(false);
+
   // Effect to center the modal when it first appears
   useEffect(() => {
-    if (isVisible && modalRef.current) {
+    if (isImportModalVisible && modalRef.current) {
       const modalWidth = modalRef.current.offsetWidth;
       const modalHeight = modalRef.current.offsetHeight;
       setPosition({
@@ -27,21 +37,21 @@ const ImportDataModal = ({ isVisible, onClose, onFileImport }) => {
         y: (window.innerHeight - modalHeight) / 2,
       });
     }
-  }, [isVisible]);
+  }, [isImportModalVisible]);
 
   // Reset state when the modal is closed
   useEffect(() => {
-    if (!isVisible) {
+    if (!isImportModalVisible) {
       setIsDragging(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     }
-  }, [isVisible]);
+  }, [isImportModalVisible]);
 
   const processFile = (file) => {
     if (file) {
-      onFileImport(file);
+      handleFileImport(file); // Use handler from context
       onClose();
     }
   };
@@ -112,7 +122,7 @@ const ImportDataModal = ({ isVisible, onClose, onFileImport }) => {
     };
   }, [isWindowDragging, handleMouseMove, handleMouseUp]);
 
-  if (!isVisible) return null;
+  if (!isImportModalVisible) return null;
 
   const styles = `
     .modal-overlay-draggable {

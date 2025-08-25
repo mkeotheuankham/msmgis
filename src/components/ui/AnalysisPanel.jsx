@@ -1,14 +1,24 @@
 import React, { useState } from "react";
 import { AreaChart, Waypoints, SquareAsterisk } from "lucide-react";
 
-const AnalysisPanel = ({
-  isVisible,
-  onClose,
-  importedLayers,
-  onRunAreaAnalysis,
-  onRunDistanceAnalysis,
-  onRunShapeAnalysis,
-}) => {
+// 1. Import the context hook
+import { useAppContext } from "../../hooks/useAppContext";
+
+const AnalysisPanel = () => {
+  // 2. Get state and functions from the context
+  const {
+    activePanel,
+    importedLayers,
+    handleRunAreaAnalysis,
+    handleRunDistanceAnalysis,
+    handleRunShapeAnalysis,
+    setActivePanel,
+  } = useAppContext();
+
+  // Calculate visibility based on the activePanel state from context
+  const isVisible = activePanel === "analysis";
+  const onClose = () => setActivePanel(null);
+
   // State for Area Analysis
   const [areaTargetLayerId, setAreaTargetLayerId] = useState("");
   const [areaAttributeName, setAreaAttributeName] = useState("area_sqm");
@@ -39,7 +49,7 @@ const AnalysisPanel = ({
       alert("Please provide an attribute name for the area.");
       return;
     }
-    onRunAreaAnalysis({
+    handleRunAreaAnalysis({
       layerId: areaTargetLayerId,
       attributeName: areaAttributeName.trim(),
     });
@@ -59,7 +69,7 @@ const AnalysisPanel = ({
       alert("Please provide an attribute name for the distance.");
       return;
     }
-    onRunDistanceAnalysis({
+    handleRunDistanceAnalysis({
       targetLayerId: distTargetLayerId,
       sourceLayerId: distSourceLayerId,
       attributeName: distAttributeName.trim(),
@@ -76,7 +86,7 @@ const AnalysisPanel = ({
       alert("Please provide an attribute name for the ratio.");
       return;
     }
-    onRunShapeAnalysis({
+    handleRunShapeAnalysis({
       layerId: shapeTargetLayerId,
       attributeName: shapeAttributeName.trim(),
     });

@@ -7,13 +7,20 @@ import {
   FileText,
 } from "lucide-react";
 
-const ExportDataModal = ({
-  isVisible,
-  onClose,
-  onExport,
-  mapInstance,
-  importedLayers,
-}) => {
+// 1. Import the context hook
+import { useAppContext } from "../../hooks/useAppContext";
+
+const ExportDataModal = () => {
+  // 2. Get state and functions from the context
+  const {
+    isExportModalVisible,
+    setIsExportModalVisible,
+    handleExportData,
+    mapInstance,
+    importedLayers,
+  } = useAppContext();
+
+  // Internal component state remains the same
   const [selectedLayerId, setSelectedLayerId] = useState("");
   const [exportFormat, setExportFormat] = useState("geojson");
   const [exportableLayers, setExportableLayers] = useState([]);
@@ -24,9 +31,12 @@ const ExportDataModal = ({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const modalRef = useRef(null);
 
+  // Local onClose handler
+  const onClose = () => setIsExportModalVisible(false);
+
   // Effect to center the modal when it first appears
   useEffect(() => {
-    if (isVisible && modalRef.current) {
+    if (isExportModalVisible && modalRef.current) {
       const modalWidth = modalRef.current.offsetWidth;
       const modalHeight = modalRef.current.offsetHeight;
       setPosition({
@@ -34,10 +44,11 @@ const ExportDataModal = ({
         y: (window.innerHeight - modalHeight) / 2,
       });
     }
-  }, [isVisible]);
+  }, [isExportModalVisible]);
 
+  // Effect to populate the list of exportable layers
   useEffect(() => {
-    if (isVisible && mapInstance) {
+    if (isExportModalVisible && mapInstance) {
       const editorLayer = mapInstance
         .getLayers()
         .getArray()
@@ -63,14 +74,14 @@ const ExportDataModal = ({
         setSelectedLayerId("");
       }
     }
-  }, [isVisible, mapInstance, importedLayers]);
+  }, [isExportModalVisible, mapInstance, importedLayers]);
 
   const handleExportClick = () => {
     if (!selectedLayerId) {
       alert("Please select a layer to export.");
       return;
     }
-    onExport(selectedLayerId, exportFormat);
+    handleExportData(selectedLayerId, exportFormat); // Use handler from context
     onClose();
   };
 
@@ -112,7 +123,7 @@ const ExportDataModal = ({
     };
   }, [isWindowDragging, handleMouseMove, handleMouseUp]);
 
-  if (!isVisible) return null;
+  if (!isExportModalVisible) return null;
 
   const styles = `
     .modal-overlay-draggable {
@@ -259,7 +270,6 @@ const ExportDataModal = ({
                 >
                   <FileArchive size={16} /> KML
                 </button>
-                {/* ADDED SHAPEFILE BUTTON */}
                 <button
                   className={`format-button ${
                     exportFormat === "shp" ? "active" : ""

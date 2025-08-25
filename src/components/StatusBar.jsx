@@ -1,88 +1,67 @@
 import React from "react";
 import { Grid, Globe } from "lucide-react"; // Import icons
 
-const StatusBar = ({
-  graticuleEnabled,
-  graticuleType,
-  showGraticuleOptions,
-  setShowGraticuleOptions,
-  handleGraticuleToggle,
-  handleGraticuleTypeChange,
-}) => {
+// 1. Import the context hook
+import { useAppContext } from "../hooks/useAppContext";
+
+const StatusBar = () => {
+  // 2. Get all necessary state and functions from the context
+  const {
+    graticuleEnabled,
+    setGraticuleEnabled,
+    graticuleType,
+    setGraticuleType,
+    showGraticuleOptions,
+    setShowGraticuleOptions,
+  } = useAppContext();
+
+  // 3. Define handlers inside the component
+  const handleGraticuleTypeChange = (type) => {
+    setGraticuleType(type);
+    setGraticuleEnabled(true);
+    setShowGraticuleOptions(false);
+  };
+
+  const handleGraticuleToggle = () => {
+    setGraticuleEnabled((prev) => !prev);
+    setShowGraticuleOptions(false);
+  };
+
   return (
     <>
       <style>{`
         /* Status Bar */
         .status-bar {
-          /* Set a dark, semi-transparent background */
-          /* ຕັ້ງຄ່າສີພື້ນຫຼັງສີເຂັ້ມ, ເຄິ່ງໂປ່ງໃສ */
           background: var(--color-dark-surface);
-          /* Add a subtle dark top border */
-          /* ເພີ່ມ Top Border ສີເຂັ້ມແບບຈືດໆ */
           border-top: 1px solid var(--color-dark-border);
-          /* Add internal padding */
-          /* ເພີ່ມ Internal Padding */
           padding: var(--spacing-xs) var(--spacing-md);
-          /* Set font size */
-          /* ຕັ້ງຄ່າ Font Size */
           font-size: var(--font-size-md);
-          /* *** FIX: Set a light text color for all items in the status bar *** */
-          /* *** ແກ້ໄຂ: ຕັ້ງຄ່າສີຂໍ້ຄວາມໃຫ້ເປັນສີອ່ອນສຳລັບທຸກລາຍການໃນແຖບສະຖານະ *** */
           color: var(--color-text-light);
-          /* Use flexbox to arrange status items horizontally */
-          /* ໃຊ້ Flexbox ເພື່ອຈັດຮຽງ Status Items ຕາມແນວນອນ */
           display: flex;
-          /* Add a gap between status items */
-          /* ເພີ່ມຊ່ອງຫວ່າງລະຫວ່າງ Status Items */
           gap: var(--spacing-xl);
-          box-shadow: 0 -2px var(--spacing-sm) var(--color-shadow); /* Subtle shadow at the top */
+          box-shadow: 0 -2px var(--spacing-sm) var(--color-shadow);
         }
 
         .status-item {
-          /* Use flexbox for layout of individual status items */
-          /* ໃຊ້ Flexbox ສໍາລັບ Layout ຂອງແຕ່ລະ Status Items */
           display: flex;
-          /* Center align items vertically */
-          /* ຈັດຕຳແໜ່ງ Items ຕາມແນວຕັ້ງ */
           align-items: center;
-          /* Add a small gap between elements within the item */
-          /* ເພີ່ມຊ່ອງຫວ່າງນ້ອຍໆລະຫວ່າງ Elements ພາຍໃນ Item */
           gap: var(--spacing-xs);
         }
 
-        /* *** ADDED RULE: Ensure all text inside status items is light-colored *** */
-        /* *** ເພີ່ມກົດ: ຮັບປະກັນວ່າຂໍ້ຄວາມທັງໝົດພາຍໃນລາຍການສະຖານະເປັນສີອ່ອນ *** */
         .status-item span {
-          color: inherit; /* Inherit the light color from .status-bar */
+          color: inherit;
         }
 
-        /* Coordinate Display */
         .coordinates {
-          /* Set a dark, semi-transparent background */
-          /* ຕັ້ງຄ່າພື້ນຫຼັງສີເຂັ້ມ, ເຄິ່ງໂປ່ງໃສ */
           background: rgba(40, 40, 40, 0.7);
-          /* Add internal padding */
-          /* ເພີ່ມ Internal Padding */
           padding: var(--spacing-xxs) 6px;
-          /* Add a subtle dark border */
-          /* ເພີ່ມ Border ສີເຂັ້ມແບບຈືດໆ */
           border: 1px solid var(--color-dark-border-light);
-          /* Apply border-radius for slightly rounded corners */
-          /* ໃຊ້ Border-Radius ສໍາລັບມູມມົນເລັກນ້ອຍ */
           border-radius: var(--border-radius-sm);
-          /* Use a monospace font for coordinates */
-          /* ໃຊ້ Monospace Font ສໍາລັບ Coordinates */
-          font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier,
-            monospace;
-          /* Set a smaller font size */
-          /* ຕັ້ງຄ່າ Font Size ໃຫ້ໜ້ອຍລົງ */
+          font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
           font-size: var(--font-size-sm);
-          /* Set text color to a light, distinct color */
-          /* ຕັ້ງຄ່າສີຂໍ້ຄວາມເປັນສີທີ່ສະຫວ່າງ, ແຕກຕ່າງ */
-          color: var(--color-text-coordinates); /* A light green for coordinates */
+          color: var(--color-text-coordinates);
         }
 
-        /* New styles for GraticuleLayer button */
         .graticule-button-container {
           position: relative;
           display: flex;
@@ -123,7 +102,7 @@ const StatusBar = ({
 
         .graticule-options {
           position: absolute;
-          bottom: calc(100% + var(--spacing-xs)); /* Position above the button */
+          bottom: calc(100% + var(--spacing-xs));
           left: 0;
           background: var(--color-dark-surface);
           border: 1px solid var(--color-dark-border);
@@ -134,18 +113,12 @@ const StatusBar = ({
           padding: var(--spacing-xs);
           min-width: 120px;
           animation: fadeIn 0.2s ease-out forwards;
-          z-index: 1000; /* Ensure options are on top */
+          z-index: 1000;
         }
 
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         .graticule-option {
@@ -164,7 +137,7 @@ const StatusBar = ({
         }
 
         .graticule-option:hover {
-          background-color: rgba(0, 153, 255, 0.2); /* Light blue background on hover */
+          background-color: rgba(0, 153, 255, 0.2);
           color: var(--color-text-active);
         }
 
@@ -184,14 +157,12 @@ const StatusBar = ({
           <span>Scale:</span>
           <span id="scale">1:1,000,000</span>
         </div>
-        {/* Graticule Layer Button */}
         <div className="status-item graticule-button-container">
           <button
             className={`graticule-toggle-button ${
               graticuleEnabled ? "active" : ""
             }`}
             onClick={() => {
-              // Always toggle the options dropdown visibility
               setShowGraticuleOptions((prev) => !prev);
             }}
             title="Toggle Graticule Layer and Options"

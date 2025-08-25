@@ -1,14 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { X as CloseIcon, Settings, ChevronDown, ChevronUp } from "lucide-react";
 
-const ImageEditorModal = ({
-  isVisible,
-  onClose,
-  onSave,
-  layer,
-  projections,
-  projectionDefs,
-}) => {
+// 1. Import the context hook and config files
+import { useAppContext } from "../../hooks/useAppContext";
+import { utmProjections, projectionDefs } from "../../config/projections";
+
+const ImageEditorModal = () => {
+  // 2. Get state and functions from the context
+  const {
+    isImageEditorModalVisible,
+    setIsImageEditorModalVisible,
+    handleImageEditSave,
+    editingImageLayer,
+  } = useAppContext();
+
+  // Internal component state remains the same
   const [selectedProj, setSelectedProj] = useState("");
   const [datumParams, setDatumParams] = useState(null);
   const [showDatumParams, setShowDatumParams] = useState(false);
@@ -19,9 +25,12 @@ const ImageEditorModal = ({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const modalRef = useRef(null);
 
+  // Local onClose handler
+  const onClose = () => setIsImageEditorModalVisible(false);
+
   // Effect to center the modal when it first appears
   useEffect(() => {
-    if (isVisible && modalRef.current) {
+    if (isImageEditorModalVisible && modalRef.current) {
       const modalWidth = modalRef.current.offsetWidth;
       const modalHeight = modalRef.current.offsetHeight;
       setPosition({
@@ -29,15 +38,15 @@ const ImageEditorModal = ({
         y: (window.innerHeight - modalHeight) / 2,
       });
     }
-  }, [isVisible]);
+  }, [isImageEditorModalVisible]);
 
   // Populate state when the modal opens with the current layer's data
   useEffect(() => {
-    if (isVisible && layer) {
+    if (isImageEditorModalVisible && editingImageLayer) {
       const projDefArr = projectionDefs.find(
-        (p) => p[0] === layer.projectionKey
+        (p) => p[0] === editingImageLayer.projectionKey
       );
-      setSelectedProj(layer.projectionKey);
+      setSelectedProj(editingImageLayer.projectionKey);
 
       if (projDefArr && projDefArr[1]) {
         const towgs84Match = projDefArr[1].match(/\+towgs84=([^ ]+)/);
@@ -57,11 +66,11 @@ const ImageEditorModal = ({
         }
       }
     }
-  }, [isVisible, layer, projectionDefs]);
+  }, [isImageEditorModalVisible, editingImageLayer]);
 
   // Update datum fields if the user selects a new projection from the dropdown
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isImageEditorModalVisible) return;
     const projDefArr = projectionDefs.find((p) => p[0] === selectedProj);
     if (projDefArr && projDefArr[1]) {
       const towgs84Match = projDefArr[1].match(/\+towgs84=([^ ]+)/);
@@ -81,7 +90,7 @@ const ImageEditorModal = ({
         setShowDatumParams(false);
       }
     }
-  }, [selectedProj, projectionDefs, isVisible]);
+  }, [selectedProj, isImageEditorModalVisible]);
 
   // Handlers for dragging, wrapped in useCallback for performance
   const handleMouseDown = useCallback((e) => {
@@ -97,10 +106,7 @@ const ImageEditorModal = ({
   const handleMouseMove = useCallback(
     (e) => {
       if (isDragging) {
-        setPosition({
-          x: e.clientX - offset.x,
-          y: e.clientY - offset.y,
-        });
+        setPosition({ x: e.clientX - offset.x, y: e.clientY - offset.y });
       }
     },
     [isDragging, offset]
@@ -147,7 +153,7 @@ const ImageEditorModal = ({
         projectionInfo = { key: tempKey, def: newDef };
       }
     }
-    onSave(layer.id, projectionInfo);
+    handleImageEditSave(editingImageLayer.id, projectionInfo);
     onClose();
   };
 
@@ -156,7 +162,7 @@ const ImageEditorModal = ({
     setDatumParams((prev) => ({ ...prev, [name]: parseFloat(value) || 0 }));
   };
 
-  if (!isVisible || !layer) return null;
+  if (!isImageEditorModalVisible || !editingImageLayer) return null;
 
   const styles = `
     .modal-overlay-draggable {
@@ -175,14 +181,14 @@ const ImageEditorModal = ({
       width: 550px;
       max-width: 95%;
       animation: modal-fade-in 0.3s ease-out;
-      pointer-events: auto; /* Re-enable pointer events for the modal itself */
+      pointer-events: auto;
     }
     .modal-title-draggable {
       margin: 0; padding: 0.75rem 1.5rem;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1); font-size: 1.1rem; font-weight: 600;
       cursor: move;
       display: flex; align-items: center; gap: 0.5rem;
-      user-select: none; /* Prevent text selection while dragging */
+      user-select: none;
     }
     .modal-body {
         padding: 1.5rem;
@@ -193,7 +199,6 @@ const ImageEditorModal = ({
     .modal-body::-webkit-scrollbar-track { background: transparent; }
     .modal-body::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.2); border-radius: 3px; }
     .modal-body::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.4); }
-    
     .close-button {
       background: transparent; border: none; color: #a0a0a0; cursor: pointer;
       position: absolute; top: 0.75rem; right: 1rem; padding: 0.25rem;
@@ -281,7 +286,7 @@ const ImageEditorModal = ({
                 margin: "0 0 1rem 0",
               }}
             >
-              Layer: <strong>{layer.name}</strong>
+              Layer: <strong>{editingImageLayer.name}</strong>
             </p>
 
             <div className="form-group">
@@ -291,7 +296,7 @@ const ImageEditorModal = ({
                 value={selectedProj}
                 onChange={(e) => setSelectedProj(e.target.value)}
               >
-                {projections.map((p) => (
+                {utmProjections.map((p) => (
                   <option key={p.key} value={p.key}>
                     {p.name}
                   </option>

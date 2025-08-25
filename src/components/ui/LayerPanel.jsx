@@ -8,11 +8,14 @@ import {
   EyeOff,
   Palette,
   Image as ImageIcon,
-  Settings, // Import Settings icon for the editor
+  Settings,
 } from "lucide-react";
 import VectorSource from "ol/source/Vector";
 
-// --- Reusable Sub-Components ---
+// 1. Import the context hook
+import { useAppContext } from "../../hooks/useAppContext";
+
+// --- Reusable Sub-Components (No changes needed here) ---
 
 const SectionHeader = ({ title, icon, isExpanded, onToggle }) => {
   const IconComponent = icon;
@@ -45,7 +48,7 @@ const OpacitySlider = ({ opacity, onOpacityChange, disabled }) => (
   </div>
 );
 
-// --- Layer Control Components ---
+// --- Layer Control Components (No changes needed here) ---
 
 const VectorLayerControls = ({
   layer,
@@ -130,16 +133,22 @@ const ImageLayerControls = ({
 
 // --- Main Layer Panel Component ---
 
-const LayerPanel = ({
-  isVisible,
-  importedLayers,
-  setImportedLayers,
-  imageLayers,
-  setImageLayers,
-  mapInstance,
-  onStyleEdit,
-  onImageEdit,
-}) => {
+const LayerPanel = () => {
+  // 2. Get state and functions from the context
+  const {
+    activePanel,
+    importedLayers,
+    setImportedLayers,
+    imageLayers,
+    setImageLayers,
+    mapInstance,
+    handleStyleEdit, // Use handler from context
+    handleImageEdit, // Use handler from context
+  } = useAppContext();
+
+  // Calculate visibility based on the activePanel state from context
+  const isVisible = activePanel === "layers";
+
   const [expandedSections, setExpandedSections] = useState({
     vectors: true,
     images: true,
@@ -169,12 +178,10 @@ const LayerPanel = ({
       layerToZoom.features.length > 0
     ) {
       const source = new VectorSource({ features: layerToZoom.features });
-      mapInstance
-        .getView()
-        .fit(source.getExtent(), {
-          padding: [100, 100, 100, 100],
-          duration: 1000,
-        });
+      mapInstance.getView().fit(source.getExtent(), {
+        padding: [100, 100, 100, 100],
+        duration: 1000,
+      });
     }
   };
 
@@ -203,7 +210,7 @@ const LayerPanel = ({
     .panel {
       position: absolute; top: 0; right: 0; bottom: 0;
       width: 300px;
-      background-color: rgba(26, 29, 33, 0.8); /* Semi-transparent background */
+      background-color: rgba(26, 29, 33, 0.8);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       border-left: 1px solid rgba(255, 255, 255, 0.1);
@@ -216,12 +223,10 @@ const LayerPanel = ({
     .panel.visible {
       transform: translateX(0);
     }
-    /* Custom Scrollbar */
     .panel::-webkit-scrollbar { width: 6px; }
     .panel::-webkit-scrollbar-track { background: transparent; }
     .panel::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.2); border-radius: 3px; }
     .panel::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.4); }
-
     .panel-section {
       background-color: rgba(0, 0, 0, 0.2);
       border-radius: 8px;
@@ -314,7 +319,7 @@ const LayerPanel = ({
                     onOpacityChange={handleVectorOpacityChange}
                     onRemove={handleVectorRemove}
                     onZoom={handleVectorZoom}
-                    onStyleEdit={onStyleEdit}
+                    onStyleEdit={handleStyleEdit}
                   />
                 ))
               ) : (
@@ -343,7 +348,7 @@ const LayerPanel = ({
                     onOpacityChange={handleImageOpacityChange}
                     onRemove={handleImageRemove}
                     onZoom={handleImageZoom}
-                    onImageEdit={onImageEdit}
+                    onImageEdit={handleImageEdit}
                   />
                 ))
               ) : (

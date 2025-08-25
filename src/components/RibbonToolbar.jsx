@@ -25,27 +25,34 @@ import {
 } from "lucide-react";
 import "./RibbonToolbar.css";
 
-const RibbonToolbar = ({
-  activeTool,
-  setActiveTool,
-  activeTab,
-  setActiveTab,
-  activePanel,
-  setActivePanel,
-  setIsImportModalVisible,
-  setIsExportModalVisible,
-  setIsImageModalVisible,
-  handleZoomIn,
-  handleZoomOut,
-  handleZoomToLayer,
-  handleFullExtent,
-  handleUndo,
-  handleRedo,
-  canUndo,
-  canRedo,
-  handleSaveProject,
-  handleLoadProject,
-}) => {
+// 1. Import the context hook
+import { useAppContext } from "../hooks/useAppContext";
+
+const RibbonToolbar = () => {
+  // 2. Get state and setters from the context
+  const {
+    activeTool,
+    setActiveTool,
+    activeTab,
+    setActiveTab,
+    activePanel,
+    setActivePanel,
+    setIsImportModalVisible,
+    setIsExportModalVisible,
+    setIsImageModalVisible,
+    handleZoomIn,
+    handleZoomOut,
+    handleZoomToLayer,
+    handleFullExtent,
+    handleUndo,
+    handleRedo,
+    canUndo,
+    canRedo,
+    // Note: handleSaveProject and handleLoadProject would also come from context if defined there
+    // handleSaveProject,
+    // handleLoadProject,
+  } = useAppContext();
+
   const handleTabClick = (tab) => setActiveTab(tab);
 
   const handleToolClick = useCallback(
@@ -256,19 +263,19 @@ const RibbonToolbar = ({
               <RibbonButton
                 icon={<Save size={18} />}
                 label="Save Project"
-                onClick={handleSaveProject}
+                // onClick={handleSaveProject} // This would come from context
               />
               <RibbonButton
                 icon={<CloudDownload size={18} />}
                 label="Load Project"
-                onClick={handleLoadProject}
+                // onClick={handleLoadProject} // This would come from context
               />
             </div>
             <div className="ribbon-group-title">Project</div>
           </div>
         </div>
 
-        {/* ----- FIXED ANALYSIS TAB ----- */}
+        {/* Analysis Tab Content */}
         <div className={`tab-pane ${activeTab === "analysis" ? "active" : ""}`}>
           <div className="ribbon-group">
             <div className="ribbon-buttons">

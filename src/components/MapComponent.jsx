@@ -33,24 +33,31 @@ import BaseMapManager from "./map/BaseMapManager";
 import CustomUtmGrid from "./map/CustomUtmGrid";
 import MeasureTool from "./tools/MeasureTool";
 
+// 1. Import the context hook
+import { useAppContext } from "../hooks/useAppContext";
+
 // Register UTM projections for Laos
 proj4.defs("EPSG:32647", "+proj=utm +zone=47 +datum=WGS84 +units=m +no_defs");
 proj4.defs("EPSG:32648", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
 register(proj4);
 
-const MapComponent = ({
-  activeTool,
-  setMapInstance,
-  graticuleEnabled,
-  graticuleType,
-  importedLayers,
-  baseLayerStates,
-  onFeatureSelect,
-  imageLayers,
-  historyManager,
-  onHistoryChange,
-  setActiveTool,
-}) => {
+// 2. Remove all state-related props from the function signature
+const MapComponent = () => {
+  // 3. Get all necessary state and functions from the context
+  const {
+    activeTool,
+    setActiveTool,
+    setMapInstance,
+    graticuleEnabled,
+    graticuleType,
+    importedLayers,
+    baseLayerStates,
+    handleFeatureSelect,
+    imageLayers,
+    historyManagerRef,
+    updateHistoryButtons,
+  } = useAppContext();
+
   const mapRef = useRef();
   const olMap = useRef(null);
   const drawInteractionRef = useRef(null);
@@ -141,7 +148,7 @@ const MapComponent = ({
       }
       measureSource.addFeatures(newLabelFeatures);
     },
-    [selectionMeasureLayerRef, formatArea, createTextStyle, formatLength]
+    [formatArea, createTextStyle, formatLength]
   );
 
   // --- Initial Map Setup ---
@@ -195,9 +202,9 @@ const MapComponent = ({
 
     setMapInstance(olMap.current);
 
-    if (historyManager) {
-      historyManager.addState([]);
-      onHistoryChange();
+    if (historyManagerRef.current) {
+      historyManagerRef.current.addState([]);
+      updateHistoryButtons();
     }
 
     return () => {
@@ -206,7 +213,7 @@ const MapComponent = ({
         olMap.current.dispose();
       }
     };
-  }, [setMapInstance, historyManager, onHistoryChange]);
+  }, [setMapInstance, historyManagerRef, updateHistoryButtons]);
 
   // --- Layer Management Effect ---
   useEffect(() => {
@@ -507,10 +514,10 @@ const MapComponent = ({
     };
 
     const saveHistoryState = () => {
-      if (historyManager && vectorLayerRef.current) {
+      if (historyManagerRef.current && vectorLayerRef.current) {
         const features = vectorLayerRef.current.getSource().getFeatures();
-        historyManager.addState(features);
-        onHistoryChange();
+        historyManagerRef.current.addState(features);
+        updateHistoryButtons();
       }
     };
 
@@ -574,7 +581,7 @@ const MapComponent = ({
           features.push(feature);
         }
       });
-      onFeatureSelect(
+      handleFeatureSelect(
         features.length > 0
           ? {
               attributes: features[0].getProperties(),
@@ -868,10 +875,10 @@ const MapComponent = ({
     return cleanup;
   }, [
     activeTool,
-    onFeatureSelect,
+    handleFeatureSelect,
     importedLayers,
-    historyManager,
-    onHistoryChange,
+    historyManagerRef,
+    updateHistoryButtons,
     setActiveTool,
     formatArea,
     formatLength,

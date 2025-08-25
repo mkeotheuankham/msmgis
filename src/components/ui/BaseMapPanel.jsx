@@ -9,6 +9,9 @@ import {
   Layers2,
 } from "lucide-react";
 
+// 1. Import the context hook
+import { useAppContext } from "../../hooks/useAppContext";
+
 // Component ສຳລັບສະແດງແຖບເລື່ອນປັບຄວາມໂປ່ງໃສ (Opacity Slider)
 const OpacitySlider = ({ opacity, onOpacityChange, disabled }) => (
   <div className="opacity-slider-container">
@@ -27,12 +30,18 @@ const OpacitySlider = ({ opacity, onOpacityChange, disabled }) => (
 );
 
 // Component ຫຼັກຂອງ BaseMap Panel
-const BaseMapPanel = ({
-  isVisible,
-  baseLayerStates,
-  onBaseMapChange,
-  onBaseMapOpacityChange,
-}) => {
+const BaseMapPanel = () => {
+  // 2. Get state and functions from the context
+  const {
+    activePanel,
+    baseLayerStates,
+    handleBaseMapChange,
+    handleBaseMapOpacityChange,
+  } = useAppContext();
+
+  // Calculate visibility based on the activePanel state from context
+  const isVisible = activePanel === "basemaps";
+
   const baseMaps = [
     { key: "osm", name: "Street Map", icon: StreetMapIcon },
     { key: "googleSatellite", name: "Google Satellite", icon: Globe },
@@ -115,6 +124,7 @@ const BaseMapPanel = ({
           </div>
           <div className="property-grid">
             {baseMaps.map((item) => {
+              // Now baseLayerStates is guaranteed to be available from the context
               const layer = baseLayerStates[item.key];
               if (!layer) return null;
               return (
@@ -123,7 +133,7 @@ const BaseMapPanel = ({
                     className={`basemap-option ${
                       layer.visible ? "active" : ""
                     }`}
-                    onClick={() => onBaseMapChange(item.key)}
+                    onClick={() => handleBaseMapChange(item.key)}
                   >
                     <item.icon size={18} />
                     <span>{item.name}</span>
@@ -131,7 +141,7 @@ const BaseMapPanel = ({
                   <OpacitySlider
                     opacity={layer.opacity}
                     onOpacityChange={(value) =>
-                      onBaseMapOpacityChange(item.key, value)
+                      handleBaseMapOpacityChange(item.key, value)
                     }
                     disabled={!layer.visible}
                   />
